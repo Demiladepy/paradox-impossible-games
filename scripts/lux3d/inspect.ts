@@ -19,14 +19,35 @@ interface GltfImage {
   name?: string;
 }
 
+interface GltfAnimation {
+  name?: string;
+  samplers?: { input?: number }[];
+  channels?: unknown[];
+}
+
 interface GltfJson {
   images?: GltfImage[];
   meshes?: { primitives?: unknown[] }[];
   materials?: unknown[];
-  animations?: { name?: string }[];
+  animations?: GltfAnimation[];
+  accessors?: { max?: number[]; count?: number }[];
   skins?: unknown[];
   nodes?: unknown[];
   bufferViews?: { byteLength?: number }[];
+}
+
+/**
+ * Clip length in seconds: the largest keyframe time across the clip's input accessors.
+ * glTF stores that in accessor.max, so no BIN decoding is needed.
+ */
+function clipDuration(animation: GltfAnimation, accessors: GltfJson["accessors"]): number {
+  let duration = 0;
+  for (const sampler of animation.samplers ?? []) {
+    if (sampler.input === undefined) continue;
+    const max = accessors?.[sampler.input]?.max?.[0];
+    if (typeof max === "number" && max > duration) duration = max;
+  }
+  return duration;
 }
 
 const GLB_MAGIC = 0x46546c67; // "glTF"
@@ -116,7 +137,14 @@ async function inspect(fileName: string): Promise<void> {
   console.log(`  meshes=${json.meshes?.length ?? 0} primitives=${primitives} materials=${json.materials?.length ?? 0}`);
   console.log(`  nodes=${json.nodes?.length ?? 0} skins=${json.skins?.length ?? 0} animations=${json.animations?.length ?? 0}`);
   if (json.animations?.length) {
-    console.log(`  clips: ${json.animations.map((a) => a.name ?? "?").join(", ")}`);
+    console.log(`  clips:`);
+    for (const [index, animation] of json.animations.entries()) {
+      const seconds = clipDuration(animation, json.accessors).toFixed(2);
+      const channels = animation.channels?.length ?? 0;
+      console.log(
+        `    [${index}] ${(animation.name ?? "?").padEnd(14)} ${seconds.padStart(6)}s  ${channels} channels`,
+      );
+    }
   }
   const share = buffer.byteLength > 0 ? Math.round((textureBytes / buffer.byteLength) * 100) : 0;
   console.log(`  textures=${json.images?.length ?? 0} totalling ${mb(textureBytes)} (${share}% of the file)`);

@@ -1,59 +1,83 @@
 # Build Status
 
-**Updated:** 2026-11-12 · **Milestone:** 0 (technical validation) · **Phase:** scaffold built
-and green; waiting on the API key to run the first real generation.
+**Updated:** 2026-11-12 · **Milestone 0: COMPLETE** · Next: Milestone 1 (playable foundation)
+
+## Milestone 0 exit condition — met
+
+> "A real Lux3D-generated asset renders correctly inside the project."
+
+Three assets generated through the live Global API and rendering in the validation scene.
 
 ## Verified — actually run on this machine
 
-- `npm run typecheck` — **passes**, zero errors (TypeScript 5.9.3, strict,
-  `noUncheckedIndexedAccess` on).
-- `npm run test` — **19/19 passing**. Covers the Lux3D response-envelope rules:
-  `NOT_REQUESTED` and `""` rejected as URLs, unfinished tasks refused so partial artifacts are
-  never read as results, GLB selection for G1 (positional) and G1-Turbo (extension-matched),
-  error-JSON-in-`content` rejected, retarget action payload parsing.
-- `npm run build` — **passes**. 572 modules, 1.24 MB JS (341 kB gzipped) in 1.15 s.
-- Dependency set resolves cleanly on Node 22.20.0: Vite 8.3.8, @vitejs/plugin-react 6.3.0,
-  React 19.3.1, three 0.187.0, R3F 9.8.2, drei 10.7.9, @react-three/rapier 2.2.0, zod 4.6.7,
-  vitest 5.1.0.
-- `.env` is git-ignored and confirmed absent from the index.
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | passes, 0 errors (TS 5.9.3 strict, `noUncheckedIndexedAccess`) |
+| `npm run test` | **27/27 passing** across 2 files |
+| `npm run build` | passes — 572 modules, 1.24 MB JS (341 kB gzip), 2.7 s |
+| Lux3D auth | `GET task/list` → HTTP 200, `c:"0"` — key valid against `api.aholo.ai/global` |
 
-## Built but NOT yet exercised against the live API
+### Live API results
 
-Everything below compiles and is typed against the documented contract. None of it has made a
-real network call, so none of it is verified:
+| Task | Endpoint | Time | Outcome |
+| --- | --- | --- | --- |
+| `6929533` | text-to-3D `G1-Turbo` | **104 s** | platform-slab, 18,272 tris, 12.95 MB |
+| `6929612` | text-to-3D `G1` | **336 s** | contestant mesh, 30k faces requested |
+| `6929848` | auto-rig | **59 s** | **accepted** a text-generated humanoid; 54 nodes, 1 skin |
+| `6929908` | retarget, 10 clips | **17 s** | **10/10 delivered**, combined in-place GLB |
 
-- `scripts/lux3d/api.ts` — create/poll/get, auth header without `Bearer`, envelope unwrapping,
-  concurrency-limit detection.
-- `scripts/lux3d/generate.ts` — `npm run gen:asset` (text-to-3D → download → manifest).
-- `scripts/lux3d/character.ts` — `npm run gen:character` (text-to-3D → rig → retarget).
-- `src/components/AssetViewer.tsx` — GLB loading, triangle/bone/clip reporting, skeleton overlay.
-  No GLB has been loaded through it yet.
+**G1 is 3.2× slower than G1-Turbo** (336 s vs 104 s). Use Turbo for iteration; reserve G1 for
+assets that will be seen in close-up.
 
-## Open unknowns (the reason the character CLI exists)
+### Open unknowns from Milestone 0 — now answered
 
-- [ ] Does auto-rigging accept a text-generated humanoid? It runs eligibility validation.
-- [ ] Does the combined retarget GLB carry the skinned mesh, or clips only?
-- [ ] Wall-clock generation time for G1 vs G1-Turbo.
-- [ ] Credit cost per task, and whether the week's budget covers ~30–50 generations.
+- **Does auto-rigging accept a text-generated humanoid?** **Yes.** First attempt, 59 s, no
+  retries. Prompting for an explicit T-pose with separated limbs appears to have been enough.
+- **Does the combined retarget GLB carry the skin or clips only?** **It carries everything** —
+  mesh, skeleton and all 10 clips in one file. See D-010.
+- **Wall-clock generation time?** Measured, table above.
+- [ ] **Credit cost per task** — still unknown. 4 tasks spent; no usage figure surfaced.
 
-## Blocked
+### New findings (all recorded as decisions with measurements)
 
-- **The first real generation needs `LUX3D_API_KEY` in `.env`.** The file exists with an empty
-  key. It must be the **Global** key — a China key will not authenticate against
-  `api.aholo.ai/global`.
+- **D-007** — 93% of an asset's bytes are 2K PNG textures. Geometry is ~7%. An optimisation
+  pass is the first Milestone 1 task.
+- **D-008** — `aiPredictSize` scaled an arena floor tile to 0.30 units. Use `customSize` for
+  gameplay geometry.
+- **D-009** — retargeted clips arrive as `animation_1…N`; renamed positionally on download,
+  with duration evidence for why that ordering is trusted.
+- **D-010** — ship the animation GLB only; the rigged GLB is the rig master and its source URL
+  has expired.
 
-## Deviations from the original plan
+## Built but NOT yet verified
 
-- `npm run lint` is **not** wired up. ESLint setup was traded for build time; `typecheck` plus
-  strict TS is carrying that load. Revisit only if it starts costing us.
-- TypeScript 5.9.3 rather than 7.x, per the risk noted in `docs/DECISIONS.md` D-001.
+- Visual confirmation that each renamed clip *looks* like its name when played. The container
+  round-trip is unit-tested and the file re-parses, but the browser pane was unavailable, so
+  nobody has watched `Death01` play. First thing to check when the Browser pane is open.
+- `src/game/**` does not exist yet. No engine, no rules, no physics. Milestone 1.
 
-## Schedule risk
+## Deviations
 
-The event site rendered "Today 11.13" on 2026-11-12, i.e. it is already 13 Nov in the event's
-timezone. Plan against **six** days to an 18 Nov feature freeze.
+- `npm run lint` is **not** wired up; `typecheck` plus strict TS carries that load.
+- TypeScript 5.9.3 rather than 7.x (D-001).
+- The raw 12.95 MB platform slab is in git history. After the texture pass assets should commit
+  at roughly 1 MB; this one blob is the cost of the lesson and is not worth rewriting history.
 
-## Next task
+## Commands
 
-Run `npm run gen:asset` against the live API, confirm the GLB renders in the validation scene,
-then run `npm run gen:character` to answer the two rigging unknowns. That closes Milestone 0.
+```
+npm run gen:asset      -- --prompt "..." --name x [--version G1|G1-Turbo] [--faceCount n]
+npm run gen:character  -- --prompt "..." --name x     # text-to-3D -> rig -> retarget
+npm run inspect:asset  [-- file.glb]                  # triangles, textures, clips, durations
+npm run relabel:clips  -- <manifest entry>            # rewrite animation_N -> real clip names
+```
+
+## Schedule
+
+Six days to an 18 Nov feature freeze (the event site rendered "Today 11.13" on 12 Nov).
+
+## Next task — Milestone 1
+
+1. Texture optimisation pass in the asset pipeline (D-007). Everything downstream depends on it.
+2. Arena scene, player movement, camera rig with both perspectives behind one interface (D-005).
+3. Rapier physics and primitive colliders; the contestant GLB driven by its real clips.

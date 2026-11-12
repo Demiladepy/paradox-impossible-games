@@ -15,6 +15,8 @@
 
 import { createRetarget, createRig, createTextTo3D, LuxApiError, pollTask, type Lux3DStyle } from "./api.ts";
 import { parseRetargetActions, pickGlbUrl, pickSingleUrl, successfulActions } from "./outputs.ts";
+import { readFile, writeFile } from "node:fs/promises";
+import { renameAnimations } from "./glb.ts";
 import { downloadTo, parseArgs, requireString, secs, slugify, upsertEntry } from "./store.ts";
 import type { Lux3DVersion } from "../../src/types/manifest.ts";
 
@@ -135,6 +137,25 @@ async function main(): Promise<void> {
     const file = await downloadTo(url, fileName);
     console.log(`[3/3] animations ${(file.bytes / 1_048_576).toFixed(2)} MB -> ${file.path}`);
 
+    // Lux3D names the clips animation_1..animation_N. Rewrite them to the IDs we asked
+    // for so the game can reference "Idle_Loop" instead of a positional alias.
+    let bytes = file.bytes;
+    if (ext === "glb") {
+      try {
+        const original = await readFile(file.path);
+        const { renamed, buffer } = renameAnimations(
+          original,
+          delivered.map((a) => a.animation_id),
+        );
+        await writeFile(file.path, buffer);
+        bytes = buffer.byteLength;
+        console.log(`[3/3] renamed ${renamed.length} clips: ${renamed.map((r) => r.to).join(", ")}`);
+      } catch (error) {
+        console.warn(`[3/3] clip rename skipped: ${describe(error)}`);
+        console.warn(`      Clips keep their animation_N names; map them by index.`);
+      }
+    }
+
     await upsertEntry({
       name: `${name}-anim${suffix}`,
       kind: "character-animations",
@@ -143,7 +164,7 @@ async function main(): Promise<void> {
       taskId: retargetTaskId,
       source: "retarget",
       createdAt: new Date().toISOString(),
-      bytes: file.bytes,
+      bytes,
       animations: delivered.map((a) => a.animation_id),
       derivedFromTaskId: rigTaskId,
       notes: "Combined, in-place clips retargeted onto the rigged character.",

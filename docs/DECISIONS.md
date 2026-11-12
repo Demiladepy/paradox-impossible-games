@@ -155,3 +155,51 @@ about a real "floor tile" and sized it at ~30 cm. Arena platforms need to be met
 **Decision:** for arena and gameplay geometry, pass `customSize` (height in millimetres) instead
 of relying on prediction, and normalise scale on load against the collider dimensions the game
 defines. Prediction stays on for props where real-world scale is actually what we want.
+
+---
+
+## D-009 — Retargeted clips are renamed positionally on download
+**Status:** accepted (measured) · 2026-11-12
+
+Lux3D retargeting returns clips named `animation_1` … `animation_N`, not the animation IDs
+that were requested. Game code must not depend on positional aliases, so `gen:character`
+rewrites the names into the GLB at download time (`scripts/lux3d/glb.ts`), and
+`npm run relabel:clips -- <entry>` applies the same fix to an asset generated earlier.
+
+**Why positional order is trusted.** Clip durations from task `6929908`, against the order the
+IDs were sent in:
+
+| # | Requested ID | Duration |
+| --- | --- | --- |
+| 1 | Idle_Loop | 2.50s |
+| 2 | Walk_Loop | 1.33s |
+| 3 | Jog_Fwd_Loop | 0.93s |
+| 4 | Sprint_Loop | 0.67s |
+| 5 | Jump_Start | 1.33s |
+| 6 | Jump_Loop | 2.50s |
+| 7 | Jump_Land | 1.27s |
+| 8 | Roll | 1.47s |
+| 9 | Hit_Knockback | 0.83s |
+| 10 | Death01 | 2.40s |
+
+The locomotion triple is the tell: walk 1.33s > jog 0.93s > sprint 0.67s, cycle length falling
+monotonically as gait speed rises, exactly as animation data should. Idle and Death are the two
+longest. This is strong evidence, not proof — so `renameAnimations` refuses to rename at all
+when the clip count and the delivered-ID count disagree, because a mislabelled clip is worse
+than an honest `animation_N`.
+
+**Still to confirm by eye:** that each renamed clip looks like its name when played. Pending —
+the browser pane was unavailable at the time of writing.
+
+## D-010 — Ship the animation GLB; keep the rigged GLB as the rig master
+**Status:** accepted (measured) · 2026-11-12
+
+The combined retarget output is **self-contained**: `meshes=1 skins=1 animations=10`. It carries
+the skinned mesh, the skeleton and every clip, so the game loads one file and the separate
+20.31 MB rigged GLB never needs to reach the browser.
+
+Keep the rigged file in the repo anyway: it is our only copy of the rig, because the Lux3D URL
+it came from expired two hours after generation. Note the consequence — **retargeting further
+animations onto this character later needs a publicly reachable URL for `rigModelUrl`**, so the
+rigged GLB would first have to go through the Aholo asset upload API. Budget for that before
+asking for a second batch of clips, or request all needed clips in one task (max 10).

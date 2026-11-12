@@ -1,6 +1,45 @@
 {
-  "updatedAt": "2026-11-12T21:30:29.122Z",
+  "updatedAt": "2026-11-12T21:40:51.138Z",
   "entries": [
+    {
+      "name": "contestant-01-anim",
+      "kind": "character-animations",
+      "file": "/assets/generated/contestant-01-anim.glb",
+      "prompt": "",
+      "taskId": 6929908,
+      "source": "retarget",
+      "createdAt": "2026-11-12T21:40:51.135Z",
+      "bytes": 21999768,
+      "animations": [
+        "Idle_Loop",
+        "Walk_Loop",
+        "Jog_Fwd_Loop",
+        "Sprint_Loop",
+        "Jump_Start",
+        "Jump_Loop",
+        "Jump_Land",
+        "Roll",
+        "Hit_Knockback",
+        "Death01"
+      ],
+      "derivedFromTaskId": 6929848,
+      "notes": "Combined, in-place clips retargeted onto the rigged character."
+    },
+    {
+      "name": "contestant-01-rigged",
+      "kind": "character",
+      "file": "/assets/generated/contestant-01-rigged.glb",
+      "prompt": "a lean humanoid game character standing in a symmetrical T-pose with arms straight out horizontally, wearing a sleek matte survival bodysuit with glowing cyan trim, stylized sci-fi contestant, full body, clean silhouette, separated limbs",
+      "style": "cyberpunk",
+      "version": "G1",
+      "faceCount": 30000,
+      "taskId": 6929848,
+      "source": "rig",
+      "createdAt": "2026-11-12T21:38:34.025Z",
+      "bytes": 21297912,
+      "derivedFromTaskId": 6929612,
+      "notes": "Rigged character: model + materials + skeleton + skin."
+    },
     {
       "name": "platform-slab",
       "kind": "arena",

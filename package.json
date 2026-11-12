@@ -13,7 +13,8 @@
     "test:watch": "vitest",
     "gen:asset": "node --env-file=.env --import tsx scripts/lux3d/generate.ts",
     "gen:character": "node --env-file=.env --import tsx scripts/lux3d/character.ts",
-    "inspect:asset": "node --import tsx scripts/lux3d/inspect.ts"
+    "inspect:asset": "node --import tsx scripts/lux3d/inspect.ts",
+    "relabel:clips": "node --import tsx scripts/lux3d/relabel.ts"
   },
   "dependencies": {
     "@react-three/drei": "10.7.9",
