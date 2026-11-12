@@ -1,4 +1,18 @@
 {
-  "updatedAt": "1970-01-01T00:00:00.000Z",
-  "entries": []
+  "updatedAt": "2026-11-12T21:30:29.122Z",
+  "entries": [
+    {
+      "name": "platform-slab",
+      "kind": "arena",
+      "file": "/assets/generated/platform-slab.glb",
+      "prompt": "a cracked weathered obsidian platform slab, square sci-fi arena floor tile with glowing cyan fracture lines, game asset",
+      "style": "cyberpunk",
+      "version": "G1-Turbo",
+      "faceCount": 20000,
+      "taskId": 6929533,
+      "source": "text-to-3d",
+      "createdAt": "2026-11-12T21:30:29.115Z",
+      "bytes": 13581660
+    }
+  ]
 }

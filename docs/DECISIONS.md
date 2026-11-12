@@ -117,3 +117,41 @@ Either way, the game never breaks when the AI is unavailable.
 ## Open questions
 - Which LLM provider for challenge generation? (`.env.example` currently assumes Anthropic.)
 - Lux3D account tier — free gives 5 concurrent tasks — and the credit budget for the week.
+
+---
+
+## D-007 — Generated assets need a texture budget, not just a face-count budget
+**Status:** accepted (measured) · 2026-11-12
+
+First real generation, Lux3D task `6929533`, `G1-Turbo`, `faceCount: 20000`:
+
+```
+platform-slab.glb  12.95 MB
+  meshes=1 primitives=1 materials=1  skins=0 animations=0
+  textures=2 totalling 12.11 MB (93% of the file)
+    [0] image 2048x2048 image/png 7.44 MB
+    [1] image 2048x2048 image/png 4.67 MB
+```
+
+The mesh arrived at **18,272 triangles** — `faceCount` works and is worth setting. But geometry
+is 7% of the payload. Lux3D returns 2K PNG PBR maps, and at ~12 MB per asset a six-asset arena
+is a 70 MB download and a lot of GPU memory.
+
+**Decision:** the asset pipeline gets a post-download optimisation pass before Milestone 1 ends —
+resize textures (1024 for hero assets, 512 for background props) and re-encode PNG to WebP.
+Expect roughly 10–20x off the file. `npm run inspect:asset` is the measuring tool and the
+before/after numbers go straight into the project report, where asset iteration is explicitly
+part of the rubric.
+
+**Not doing:** KTX2/Basis. Better for GPU memory, but it needs native tooling and we do not have
+the days to spend on it.
+
+## D-008 — `aiPredictSize` guesses real-world scale, which is wrong for arena geometry
+**Status:** accepted (measured) · 2026-11-12
+
+The same slab came back with a longest side of **0.30 units**. `aiPredictSize: true` reasoned
+about a real "floor tile" and sized it at ~30 cm. Arena platforms need to be metres across.
+
+**Decision:** for arena and gameplay geometry, pass `customSize` (height in millimetres) instead
+of relying on prediction, and normalise scale on load against the collider dimensions the game
+defines. Prediction stays on for props where real-world scale is actually what we want.
