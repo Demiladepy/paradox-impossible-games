@@ -33,14 +33,14 @@ body {
   overflow: hidden;
 }
 
-.shell {
+.lab {
   display: grid;
   grid-template-columns: 320px 1fr;
   height: 100%;
 }
 
 @media (max-width: 760px) {
-  .shell {
+  .lab {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
   }
@@ -226,4 +226,168 @@ body {
   letter-spacing: 0.1em;
   text-transform: uppercase;
   pointer-events: none;
+}
+
+/* ---------- application shell ---------- */
+
+.app {
+  display: grid;
+  grid-template-rows: 46px 1fr;
+  height: 100%;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.wordmark {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.2em;
+}
+
+.wordmark .sub {
+  display: inline-block;
+  margin-left: 10px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tab[aria-pressed="true"] {
+  background: var(--panel-2);
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.milestone {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.view {
+  min-height: 0;
+  height: 100%;
+}
+
+.lab {
+  height: 100%;
+}
+
+.stage canvas {
+  display: block;
+  outline: none;
+}
+
+/* ---------- in-game ---------- */
+
+.game-hud {
+  left: 16px;
+  bottom: 16px;
+  min-width: 210px;
+}
+
+.hud .v.bad {
+  color: var(--bad);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 6, 10, 0.55);
+  backdrop-filter: blur(3px);
+  cursor: pointer;
+}
+
+.overlay-card {
+  text-align: center;
+  padding: 28px 38px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(14, 16, 24, 0.9);
+  max-width: 420px;
+}
+
+.overlay-card h2 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.overlay-card p {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.overlay-card .hint {
+  margin-top: 16px;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+
+.keys {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 2px 6px;
+  margin-right: 3px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 10.5px;
+}
+
+/* The game screen is a direct child of .view, which is a block, so it needs a height. */
+.view > .stage {
+  height: 100%;
 }

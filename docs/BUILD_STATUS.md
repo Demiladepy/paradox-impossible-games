@@ -1,83 +1,119 @@
 # Build Status
 
-**Updated:** 2026-11-12 · **Milestone 0: COMPLETE** · Next: Milestone 1 (playable foundation)
-
-## Milestone 0 exit condition — met
-
-> "A real Lux3D-generated asset renders correctly inside the project."
-
-Three assets generated through the live Global API and rendering in the validation scene.
+**Updated:** 2026-11-13 · **Milestone 0: COMPLETE** · **Milestone 1: code complete, one
+verification outstanding** · Next: Milestone 2 (reality rule engine)
 
 ## Verified — actually run on this machine
 
 | Check | Result |
 | --- | --- |
-| `npm run typecheck` | passes, 0 errors (TS 5.9.3 strict, `noUncheckedIndexedAccess`) |
-| `npm run test` | **27/27 passing** across 2 files |
-| `npm run build` | passes — 572 modules, 1.24 MB JS (341 kB gzip), 2.7 s |
-| Lux3D auth | `GET task/list` → HTTP 200, `c:"0"` — key valid against `api.aholo.ai/global` |
+| `npm run typecheck` | passes, 0 errors |
+| `npm run test` | **42/42 passing** across 4 files |
+| `npm run build` | passes — main 1,265 kB (350 kB gzip) + 4,335 kB lazy rapier chunk |
+| Asset optimisation | **54.24 MB → 4.68 MB (−91%)**, clips and skins intact |
 
-### Live API results
+### The simulation runs headless
 
-| Task | Endpoint | Time | Outcome |
-| --- | --- | --- | --- |
-| `6929533` | text-to-3D `G1-Turbo` | **104 s** | platform-slab, 18,272 tris, 12.95 MB |
-| `6929612` | text-to-3D `G1` | **336 s** | contestant mesh, 30k faces requested |
-| `6929848` | auto-rig | **59 s** | **accepted** a text-generated humanoid; 54 nodes, 1 skin |
-| `6929908` | retarget, 10 clips | **17 s** | **10/10 delivered**, combined in-place GLB |
+`src/game/GameWorld.test.ts` drives the real arena in plain Node — no DOM, no renderer:
 
-**G1 is 3.2× slower than G1-Turbo** (336 s vs 104 s). Use Turbo for iteration; reserve G1 for
-assets that will be seen in close-up.
+- the player settles onto the start pad rather than falling through it
+- forward input moves the player towards -Z
+- **determinism**: the same 180-step input script twice gives bit-identical positions
+- falling past the kill plane loses the run; reaching the exit wins it
+- input is ignored once the run is over; restart returns to spawn
+- `setSolid(id, false)` drops the player through a platform — the primitive THE FALSE
+  FLOOR is built on
 
-### Open unknowns from Milestone 0 — now answered
+This is the foundation the Milestone 3 solvability probe needs (D-011).
 
-- **Does auto-rigging accept a text-generated humanoid?** **Yes.** First attempt, 59 s, no
-  retries. Prompting for an explicit T-pose with separated limbs appears to have been enough.
-- **Does the combined retarget GLB carry the skin or clips only?** **It carries everything** —
-  mesh, skeleton and all 10 clips in one file. See D-010.
-- **Wall-clock generation time?** Measured, table above.
-- [ ] **Credit cost per task** — still unknown. 4 tasks spent; no usage figure surfaced.
+### The animation contract is checked against the real asset
 
-### New findings (all recorded as decisions with measurements)
+`src/game/player/animation.test.ts` reads the shipped `contestant-01-anim.glb` and asserts
+every clip the game asks for by name exists, that the clips reserved for later rounds
+survive, and that **no `animation_N` aliases remain**. A pipeline regression that silently
+left the contestant standing still now fails the suite.
 
-- **D-007** — 93% of an asset's bytes are 2K PNG textures. Geometry is ~7%. An optimisation
-  pass is the first Milestone 1 task.
-- **D-008** — `aiPredictSize` scaled an arena floor tile to 0.30 units. Use `customSize` for
-  gameplay geometry.
-- **D-009** — retargeted clips arrive as `animation_1…N`; renamed positionally on download,
-  with duration evidence for why that ordering is trusted.
-- **D-010** — ship the animation GLB only; the rigged GLB is the rig master and its source URL
-  has expired.
+### Asset optimisation (D-007)
 
-## Built but NOT yet verified
+| Asset | Before | After |
+| --- | --- | --- |
+| contestant-01-anim.glb | 20.98 MB | **1.89 MB** |
+| contestant-01-rigged.glb | 20.31 MB | **1.42 MB** |
+| platform-slab.glb | 12.95 MB | **1.36 MB** |
 
-- Visual confirmation that each renamed clip *looks* like its name when played. The container
-  round-trip is unit-tested and the file re-parses, but the browser pane was unavailable, so
-  nobody has watched `Death01` play. First thing to check when the Browser pane is open.
-- `src/game/**` does not exist yet. No engine, no rules, no physics. Milestone 1.
+Textures resized to 1024×1024 and re-encoded as WebP; all 10 clips, the skin and the
+54-node skeleton verified intact afterwards. Originals kept in `_raw/` (git-ignored).
+
+### Confirmed in a real browser
+
+- The app shell renders with no console errors.
+- `GameWorld.create()` **resolves in the browser** — the title overlay only renders once it
+  has, so Rapier's WASM initialised and the arena was built client-side.
+- The lazy rapier chunk is fetched at runtime, confirming D-012 works outside the bundler.
+
+## NOT verified — needs a human to look
+
+**Nobody has seen the game render.** The Browser pane was hidden for this whole session and
+the session was not open in any window, so the document stayed 0×0, the canvas never got a
+real size, and React Three Fiber never drew a frame. No screenshot was possible.
+
+Specifically unverified:
+
+- [ ] The arena and the Lux3D slab platforms actually draw, and the course reads clearly.
+- [ ] The contestant renders at a sensible scale and the right way round
+      (`MODEL_YAW_OFFSET` in `PlayerView.tsx` assumes the model faces +Z — **a guess**).
+- [ ] The retargeted clips play and look like their names. Names are proven correct; the
+      *motion* is not.
+- [ ] Movement feel: jump height against the authored gaps, camera follow, mouse look.
+- [ ] Frame rate with ~9 slab platforms on screen.
+
+**To check:** open the Browser pane, or run `npm run dev` and open http://localhost:5173.
+Click the canvas to take control. `V` switches first/third person, `R` restarts.
+
+Expect to find at least one thing wrong here. The model orientation in particular is a
+coin-flip, and jump distances were authored by eye against tuning values, not play-tested.
+
+## Milestone 1 scope
+
+| Required | State |
+| --- | --- |
+| Application shell | done — Play / Asset Lab tabs |
+| 3D scene | done, unseen |
+| Player movement | done, headless-tested, unplayed |
+| Camera controls | done — both perspectives behind one `CameraRig` (D-005), unseen |
+| Physics and collision | done, headless-tested |
+| Load the generated asset | done — slab on platforms, contestant as the player |
+| Basic arena | done — ARENA_01 "The Gauntlet", 12 platforms |
+
+**Exit condition — "the player can move around a functioning 3D arena" — is met in
+simulation and unconfirmed on screen.**
 
 ## Deviations
 
-- `npm run lint` is **not** wired up; `typecheck` plus strict TS carries that load.
-- TypeScript 5.9.3 rather than 7.x (D-001).
-- The raw 12.95 MB platform slab is in git history. After the texture pass assets should commit
-  at roughly 1 MB; this one blob is the cost of the lesson and is not worth rewriting history.
+- `@react-three/rapier` removed in favour of raw `@dimforge/rapier3d-compat` (D-011).
+- `npm run lint` still not wired up.
+- The raw 12.95 MB platform slab remains in git history from Milestone 0.
 
 ## Commands
 
 ```
+npm run dev
 npm run gen:asset      -- --prompt "..." --name x [--version G1|G1-Turbo] [--faceCount n]
-npm run gen:character  -- --prompt "..." --name x     # text-to-3D -> rig -> retarget
-npm run inspect:asset  [-- file.glb]                  # triangles, textures, clips, durations
-npm run relabel:clips  -- <manifest entry>            # rewrite animation_N -> real clip names
+npm run gen:character  -- --prompt "..." --name x
+npm run optimize:asset [-- --max 1024] [-- name]
+npm run inspect:asset  [-- file.glb]
+npm run relabel:clips  -- <manifest entry>
 ```
 
 ## Schedule
 
-Six days to an 18 Nov feature freeze (the event site rendered "Today 11.13" on 12 Nov).
+Five days to an 18 Nov feature freeze.
 
-## Next task — Milestone 1
+## Next task — Milestone 2
 
-1. Texture optimisation pass in the asset pipeline (D-007). Everything downstream depends on it.
-2. Arena scene, player movement, camera rig with both perspectives behind one interface (D-005).
-3. Rapier physics and primitive colliders; the contestant GLB driven by its real clips.
+1. Play-test Arena 01 and fix whatever the first look exposes.
+2. Rule registry and `RuleContext` (architecture §3).
+3. `CONDITIONAL_PLATFORM` — THE FALSE FLOOR — on the `conditional` platforms already
+   authored in ARENA_01, keyed off `camera.forward`.
+4. `GRAVITY_DIRECTION`, using `PhysicsWorld.setGravity` and `setControllerUp`.
+5. Decide the camera perspective for real (D-005 deadline is end of Milestone 2).

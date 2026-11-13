@@ -78,8 +78,33 @@ function parseGlb(buffer: Buffer): { json: GltfJson; binLength: number } {
   return { json, binLength };
 }
 
+/** Read width/height out of a WebP header (VP8X extended, VP8L lossless, VP8 lossy). */
+function webpSize(data: Buffer): { width: number; height: number } | null {
+  if (data.byteLength < 30) return null;
+  if (data.toString("ascii", 0, 4) !== "RIFF" || data.toString("ascii", 8, 12) !== "WEBP") {
+    return null;
+  }
+  const format = data.toString("ascii", 12, 16);
+  if (format === "VP8X") {
+    return {
+      width: (data.readUIntLE(24, 3) & 0xffffff) + 1,
+      height: (data.readUIntLE(27, 3) & 0xffffff) + 1,
+    };
+  }
+  if (format === "VP8L") {
+    const bits = data.readUInt32LE(21);
+    return { width: (bits & 0x3fff) + 1, height: ((bits >> 14) & 0x3fff) + 1 };
+  }
+  if (format === "VP8 ") {
+    return { width: data.readUInt16LE(26) & 0x3fff, height: data.readUInt16LE(28) & 0x3fff };
+  }
+  return null;
+}
+
 /** Read width/height straight out of a PNG, JPEG or WebP header. */
 function imageSize(data: Buffer): { width: number; height: number } | null {
+  const webp = webpSize(data);
+  if (webp) return webp;
   if (data.byteLength > 24 && data.readUInt32BE(0) === 0x89504e47) {
     return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
   }

@@ -203,3 +203,36 @@ it came from expired two hours after generation. Note the consequence — **reta
 animations onto this character later needs a publicly reachable URL for `rigModelUrl`**, so the
 rigged GLB would first have to go through the Aholo asset upload API. Budget for that before
 asking for a second batch of clips, or request all needed clips in one task (max 10).
+
+---
+
+## D-011 — Raw Rapier, not `@react-three/rapier`
+**Status:** accepted · 2026-11-13 · supersedes the physics row of D-001
+
+`@react-three/rapier` binds the physics world to the React tree. The Milestone 3
+solvability probe has to run the real simulation headless in Node, as fast as it can, with
+no renderer — a React-bound world cannot do that, and discovering it in Milestone 3 would
+mean rewriting movement and collision at the worst possible moment.
+
+So `src/game/physics/world.ts` wraps `@dimforge/rapier3d-compat` directly and the view
+layer copies transforms onto three.js objects once per frame.
+
+**Cost:** we write the character controller glue ourselves (Rapier's
+`KinematicCharacterController` does the hard part). **Benefit, already realised:**
+`src/game/GameWorld.test.ts` drives a full arena in plain Node — determinism, falling,
+winning, collider toggling — with no DOM and no GL context. That test file *is* the probe's
+foundation.
+
+## D-012 — Rapier is loaded as a separate chunk
+**Status:** accepted (measured) · 2026-11-13
+
+`rapier3d-compat` inlines its WASM as base64. Importing it statically put the whole thing
+in the main bundle:
+
+| | main bundle | lazy chunk |
+| --- | --- | --- |
+| static import | 5,597 kB (2,019 kB gzip) | — |
+| dynamic import | 1,265 kB (350 kB gzip) | 4,335 kB rapier |
+
+`initPhysics()` does the dynamic import, so the shell and the Asset Lab load without
+paying for physics at all, and the arena fetches it while the title overlay is up.
