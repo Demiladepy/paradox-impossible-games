@@ -66,12 +66,13 @@ MVP rule types:
 | Type | Effect | Determinism note |
 | --- | --- | --- |
 | `CONDITIONAL_PLATFORM` | toggles collider solidity on an observation predicate | predicate is a dot-product test against camera forward + a hysteresis band, so it cannot chatter |
-| `GRAVITY_DIRECTION` | rotates the world gravity vector on a schedule or trigger | vector is slerped over ~0.4 s; player controller re-bases its "up" |
-| `SPATIAL_PORTAL` | maps an entry volume to an exit transform | cooldown per body; stretch goal only |
+| `GRAVITY_DIRECTION` | inverts the world gravity vector on a schedule | **Y axis only** — flips instantly after a visible countdown rather than easing through zero (D-017); the controller and camera re-base their "up" |
+| `SPATIAL_PORTAL` | maps an entry volume to an exit transform | **declared but unimplemented**; a challenge requesting it is refused with a reason, never silently ignored |
 | `OBJECT_STATE` | enables/disables/moves a named body | the generic escape hatch |
 
-Everything is driven from a single fixed timestep (1/60) accumulator so a replay with the
-same seed and the same inputs produces the same result. That is what makes verification mean
+Rules run **before** the player moves each step, so the player moves through the world that
+step describes. Everything is driven from a single fixed timestep (1/60) accumulator so a
+replay with the same seed and the same inputs produces the same result. That is what makes verification mean
 anything.
 
 ## 4. Challenge pipeline

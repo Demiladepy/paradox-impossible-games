@@ -1,7 +1,9 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { ARENA_01 } from "../../game/arena/arena-01.ts";
+import { ARENA_02 } from "../../game/arena/arena-02.ts";
+import type { ArenaDefinition } from "../../game/arena/types.ts";
 import { GameWorld, type GameSnapshot } from "../../game/GameWorld.ts";
 import { DEFAULT_TUNING, type LocomotionState } from "../../game/player/controller.ts";
 import { useInput, type InputHandle } from "../../hooks/useInput.ts";
@@ -9,7 +11,7 @@ import { ArenaView } from "./ArenaView.tsx";
 import { PlayerView } from "./PlayerView.tsx";
 
 /**
- * Milestone 1 playable foundation: the arena, the contestant, and movement.
+ * The game screen.
  *
  * The React tree is a *view*. It never owns game state — `GameWorld` does, in plain
  * TypeScript — and nothing here re-renders per frame: the simulation is read inside
@@ -19,9 +21,14 @@ import { PlayerView } from "./PlayerView.tsx";
 /** The physics capsule is positioned at its centre; the model stands on its feet. */
 const FOOT_DROP = DEFAULT_TUNING.halfHeight + DEFAULT_TUNING.radius;
 
+const ARENAS: ArenaDefinition[] = [ARENA_01, ARENA_02];
+
 export function GameScreen() {
   const containerRef = useRef<HTMLDivElement>(null);
   const input = useInput(containerRef);
+
+  const [arenaId, setArenaId] = useState(ARENA_01.id);
+  const arena = useMemo(() => ARENAS.find((a) => a.id === arenaId) ?? ARENA_01, [arenaId]);
 
   const [world, setWorld] = useState<GameWorld | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,12 +40,19 @@ export function GameScreen() {
   useEffect(() => {
     let disposed = false;
     let created: GameWorld | null = null;
+    setWorld(null);
+    snapshotRef.current = null;
 
-    GameWorld.create(ARENA_01, { seed: "arena-01" })
+    GameWorld.create(arena, { seed: arena.id })
       .then((instance) => {
         if (disposed) {
           instance.dispose();
           return;
+        }
+        // A refused rule means the arena is not behaving as authored. Say so loudly
+        // rather than letting the player wonder why nothing is strange.
+        for (const rejection of instance.rules.rejected) {
+          console.error(`[rules] refused ${rejection.ruleId}: ${rejection.reason}`);
         }
         created = instance;
         setWorld(instance);
@@ -51,10 +65,9 @@ export function GameScreen() {
       disposed = true;
       created?.dispose();
     };
-  }, []);
+  }, [arena]);
 
-  // The HUD only needs to be readable, not frame-accurate. Ten updates a second keeps
-  // React out of the render loop entirely.
+  // The HUD only needs to be readable, not frame-accurate.
   useEffect(() => {
     const id = window.setInterval(() => {
       if (snapshotRef.current) setHud(snapshotRef.current);
@@ -84,11 +97,19 @@ export function GameScreen() {
         }}
       >
         <SceneLighting />
-        {world ? <Simulation world={world} input={input} snapshotRef={snapshotRef} /> : null}
+        {world ? <Simulation key={world.arena.id} world={world} input={input} snapshotRef={snapshotRef} /> : null}
       </Canvas>
 
       {!world ? <div className="loading">Loading arena…</div> : null}
-      {world && !locked ? <ClickToPlay status={hud?.status ?? "running"} /> : null}
+      {world && !locked ? (
+        <ClickToPlay
+          arena={arena}
+          status={hud?.status ?? "running"}
+          arenas={ARENAS}
+          onPick={setArenaId}
+        />
+      ) : null}
+      {world ? <GravityBanner snapshot={hud} /> : null}
       {world ? <GameHud snapshot={hud} /> : null}
     </div>
   );
@@ -100,8 +121,7 @@ function SceneLighting() {
       <color attach="background" args={["#05060a"]} />
       {/* The course runs 41 m. Fog starting at 26 m faded the back half of it into the
           background, so the exit and the platforms leading to it were invisible from the
-          start pad — you cannot aim a jump at something you cannot see. Now it only
-          softens the void well beyond the arena. */}
+          start pad — you cannot aim a jump at something you cannot see. */}
       <fog attach="fog" args={["#05060a", 70, 210]} />
       {/* Generated obsidian is nearly black; without fill it reads as a hole. */}
       <ambientLight intensity={0.35} color="#9fc4ff" />
@@ -127,7 +147,6 @@ function SceneLighting() {
 interface SimulationProps {
   world: GameWorld;
   input: InputHandle;
-  /** Written every frame; the HUD samples it on a timer instead of re-rendering here. */
   snapshotRef: React.RefObject<GameSnapshot | null>;
 }
 
@@ -135,10 +154,10 @@ function Simulation({ world, input, snapshotRef }: SimulationProps) {
   const { camera, scene } = useThree();
   const playerRef = useRef<THREE.Group>(null);
   const locomotionRef = useRef<LocomotionState>("idle");
+  const upSignRef = useRef(1);
   const [thirdPerson, setThirdPerson] = useState(world.camera.mode === "third");
 
   // Dev-only handle for inspecting the live scene from the console or a test harness.
-  // Stripped from production builds by the import.meta.env.DEV guard.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>)["__paradox"] = { scene, camera, world };
@@ -168,33 +187,64 @@ function Simulation({ world, input, snapshotRef }: SimulationProps) {
 
     const { eye, target } = snapshot.camera;
     camera.position.set(eye.x, eye.y, eye.z);
+    // Roll the view with gravity, so standing on the ceiling does not look like standing
+    // on the floor with the world drawn wrong.
+    camera.up.set(0, snapshot.rules.upSign, 0);
     camera.lookAt(target.x, target.y, target.z);
 
     const group = playerRef.current;
     if (group) {
       const p = snapshot.player.position;
-      group.position.set(p.x, p.y - FOOT_DROP, p.z);
+      group.position.set(p.x, p.y - FOOT_DROP * snapshot.rules.upSign, p.z);
       group.rotation.y = snapshot.player.facing;
     }
     locomotionRef.current = snapshot.player.locomotion;
+    upSignRef.current = snapshot.rules.upSign;
   });
 
   return (
     // useGLTF suspends while the assets stream in. Without a boundary inside the Canvas
     // the whole subtree unwinds and the frame loop above never gets to run.
     <Suspense fallback={null}>
-      <ArenaView arena={world.arena} />
-      <PlayerView ref={playerRef} locomotionRef={locomotionRef} visible={thirdPerson} />
+      <ArenaView arena={world.arena} snapshotRef={snapshotRef} />
+      <PlayerView
+        ref={playerRef}
+        locomotionRef={locomotionRef}
+        upSignRef={upSignRef}
+        visible={thirdPerson}
+      />
     </Suspense>
   );
 }
 
-function ClickToPlay({ status }: { status: string }) {
+/** The countdown before gravity flips. Impossible to miss on purpose. */
+function GravityBanner({ snapshot }: { snapshot: GameSnapshot | null }) {
+  const warning = snapshot?.rules.warning;
+  if (!warning) return null;
+  return (
+    <div className="gravity-banner">
+      <span className="label">{warning.message}</span>
+      <span className="count">{warning.secondsRemaining.toFixed(1)}s</span>
+    </div>
+  );
+}
+
+function ClickToPlay({
+  arena,
+  status,
+  arenas,
+  onPick,
+}: {
+  arena: ArenaDefinition;
+  status: string;
+  arenas: ArenaDefinition[];
+  onPick: (id: string) => void;
+}) {
   return (
     <div className="overlay">
       <div className="overlay-card">
-        <h2>{status === "won" ? "Arena cleared" : status === "lost" ? "Eliminated" : "Arena 01"}</h2>
-        <p>The Gauntlet</p>
+        <h2>{status === "won" ? "Arena cleared" : status === "lost" ? "Eliminated" : arena.name}</h2>
+        <p>{describeRules(arena)}</p>
         <p className="hint">Click to take control</p>
         <ul className="keys">
           <li>
@@ -210,14 +260,47 @@ function ClickToPlay({ status }: { status: string }) {
             <kbd>V</kbd> camera · <kbd>R</kbd> restart · <kbd>Esc</kbd> release
           </li>
         </ul>
+        <div className="arena-pick" onClick={(event) => event.stopPropagation()}>
+          {arenas.map((option) => (
+            <button
+              key={option.id}
+              className="clip"
+              aria-pressed={option.id === arena.id}
+              onClick={() => onPick(option.id)}
+            >
+              {option.name}
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
+/** A one-line briefing derived from the rules actually loaded, not hardcoded prose. */
+function describeRules(arena: ArenaDefinition): string {
+  const rules = arena.defaultRules ?? [];
+  if (rules.length === 0) return "Ordinary physics. Reach the exit.";
+  const lines = rules.map((rule) => {
+    switch (rule.type) {
+      case "CONDITIONAL_PLATFORM":
+        return rule.parameters["solidWhenObserved"] === true
+          ? "Platforms exist only while you watch them."
+          : "Platforms obey your gaze. Look away to cross.";
+      case "GRAVITY_DIRECTION":
+        return "Gravity will not stay where you left it.";
+      case "OBJECT_STATE":
+        return "Some ground comes and goes.";
+      default:
+        return "Something here does not behave.";
+    }
+  });
+  return lines.join(" ");
+}
+
 function GameHud({ snapshot }: { snapshot: GameSnapshot | null }) {
   if (!snapshot) return null;
-  const { player, status, elapsed, distanceToExit, camera } = snapshot;
+  const { player, status, elapsed, distanceToExit, camera, rules } = snapshot;
 
   return (
     <div className="hud game-hud">
@@ -245,6 +328,18 @@ function GameHud({ snapshot }: { snapshot: GameSnapshot | null }) {
       <div className="row">
         <span className="k">to exit</span>
         <span className="v">{distanceToExit.toFixed(1)} m</span>
+      </div>
+      <div className="row">
+        <span className="k">gravity</span>
+        <span className={`v ${rules.upSign < 0 ? "warn" : ""}`}>
+          {rules.upSign < 0 ? "inverted" : "normal"}
+        </span>
+      </div>
+      <div className="row">
+        <span className="k">unmade</span>
+        <span className={`v ${rules.phantom.length > 0 ? "warn" : ""}`}>
+          {rules.phantom.length > 0 ? rules.phantom.join(", ") : "none"}
+        </span>
       </div>
       <div className="row">
         <span className="k">camera</span>

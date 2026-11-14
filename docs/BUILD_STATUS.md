@@ -1,107 +1,106 @@
 # Build Status
 
-**Updated:** 2026-11-14 · **Milestone 0: COMPLETE** · **Milestone 1: COMPLETE, verified end
-to end** · Next: Milestone 2 (reality rule engine)
+**Updated:** 2026-11-14 · **Milestones 0, 1, 2: COMPLETE** · Next: Milestone 3 (AI challenge
+generation and verification)
 
 ## Verified — actually run on this machine
 
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | passes, 0 errors |
-| `npm run test` | **51/51 passing** across 5 files |
-| `npm run build` | passes — main 1,265 kB (350 kB gzip) + lazy 4,335 kB rapier chunk |
-| `npm run analyze:arena` | 9/9 hops clearable at walking speed |
+| `npm run test` | **71/71 passing** across 6 files |
+| `npm run build` | passes — main 1,278 kB (354 kB gzip) + lazy 4,335 kB rapier chunk |
+| `npm run analyze:arena` | 9/9 hops in Arena 01 clearable at walking speed |
 
-### End to end, headless
+## Milestone 2 exit condition — met
 
-The autopilot plays ARENA_01 from spawn to exit with no human input, **winning in 9.4
-simulated seconds**, and the run is reproducible step for step. That single test exercises
-arena data, Rapier collision, the character controller, jump ballistics, the camera basis
-movement is expressed in, and the objective check.
+> "At least two mechanics work reliably in the same scene."
 
-### End to end, in a real browser
+Both work, separately and together, with 20 tests covering them.
 
-Confirmed by driving the live page (synthetic key events + the dev scene handle):
+### THE FALSE FLOOR — `CONDITIONAL_PLATFORM`
 
-- Both GLBs fetch and parse (1.4 MB and 1.9 MB, ~70 ms each); Rapier's chunk loads and its
-  WASM initialises client-side.
-- Input moves the player: speed ramps 0 → 3.37 → 6.20 m/s, locomotion transitions
-  `fall → walk → jog` exactly as the controller defines them.
-- Jumping works: the player cleared four platforms under synthetic input.
-- **The skeleton animates.** Sampling `mixamorigLeftUpLeg` over time shows the bone
-  rotating while idle, so `Idle_Loop` is genuinely playing — the renamed clips drive the
-  rig. (Lux3D's auto-rig uses Mixamo bone naming.)
-- The arena renders legibly: contestant on the start pad facing down the course, teal lips
-  on the conditional platforms, the staircase and the exit beam all visible from spawn.
-- `MODEL_YAW_OFFSET = Math.PI` was a correct guess — the contestant faces the right way.
+Platforms stop existing while you look at them. Verified headless *and on screen*: with the
+player facing down the course, all four gap-run platforms render as outlines and the HUD
+reports `unmade: step-01, step-02, step-03, step-04`; turning 180° restores them
+(`phantom: []`).
 
-Caveat: the Browser pane runs as a background page, so its frame rate is throttled and
-**no timing or performance number from it is trustworthy**. Frame rate under load is still
-unmeasured.
+Tested: unmakes on gaze · restores on looking away · **never unmakes the platform underfoot**
+· unmakes a platform observed from a different one · **does not chatter** (camera wobbling on
+the cone boundary for 3 s produces ≤2 transitions).
 
-## Bugs found and fixed this session
+### GRAVITY ZERO — `GRAVITY_DIRECTION`
 
-All four were silent — none threw, and three looked like "the controls feel broken":
+Gravity inverts on a schedule, after a countdown. Full cycle captured live in the browser:
 
-1. **Spawn penetration.** The capsule spawned 0.18 m inside the start pad. Rapier's
-   character controller spent ~32 s resolving the overlap instead of moving; the player
-   crept at ~0.3 m/s. Now `spawnClearance()` + a test.
-2. **Velocity clamp ratchet.** The "am I blocked?" check used a `1e-4` absolute tolerance,
-   but the controller shaves a sliver off every step for collision offset and ground
-   snapping. Normal walking was read as a collision and velocity was ratcheted to a crawl.
-   Now a ratio threshold.
-3. **Stale position read.** `moveCharacter` only queues a kinematic translation; the body
-   does not move until `world.step()`. The controller read its own position a frame early.
-   Now `syncFromPhysics()` after the step.
-4. **Wedge gap.** The first gap was 0.50 m against a 0.72 m body: too narrow to fall
-   through, too wide to step over. Holding forward did nothing. Now flush, with
-   `wedgeGaps()` guarding the class of bug.
+```
+t= 6.5  y=1.40  up=+1  "GRAVITY INVERTING"   on floor-start
+t= 7.9  y=7.60  up=-1                        on ceil-main
+t=12.1  y=7.60  up=-1  "GRAVITY RESTORING"   on ceil-main
+t=14.9  y=1.37  up=+1                        on floor-start
+```
 
-Plus two autopilot defects worth noting, because the probe has to be trustworthy:
-it sprinted gaps that walking already cleared and overshot a platform; and it compared the
-capsule *centre* against a platform *surface*, so a correctly-standing agent looked 0.88 m
-too high and never advanced its waypoint.
+Tested: inverts on schedule and warns first · sends the player upward · lands them on the
+ceiling's underside rather than losing them · **kills a player caught over a gap when gravity
+restores** · holds a stable schedule over 30 s.
 
-## Design change
+### Both at once
 
-The ascent was three 1.4 m climbs with lateral offsets — fiddly for a human and for the
-agent. It is now a staircase: four even 1.0 m rises with overlapping footprints. The gap
-run keeps the jumping. PARADOX should be hard because the rules are strange, not because
-the geometry is fussy.
+A scene running `CONDITIONAL_PLATFORM` and `GRAVITY_DIRECTION` together: both rules load,
+the gaze rule still functions after the gravity rule has changed the world.
 
-## Readability pass
+### Validation refuses bad rules — 8 tests
 
-The course was effectively invisible past the start pad: fog began at 26 m over a 41 m
-course, and the generated obsidian is nearly black with no fill light. Fog now starts at
-70 m, an ambient fill was added, platform lips were brightened, and the camera pitch was
-dropped so it looks down the course rather than at the player's shoulders.
+Unknown target ids · targeting the exit (a trigger volume, no collider) · unimplemented rule
+types (`SPATIAL_PORTAL` is refused, not ignored) · unknown triggers · out-of-range numbers ·
+wrong parameter types · duplicate rule ids · contradictions (a gravity warning longer than its
+own interval). A rejected rule leaves the world completely untouched.
 
-## Milestone 1 scope — all met
+This is the foundation of Milestone 3: when the AI proposes a challenge, this layer decides
+whether a player is let into it.
 
-Application shell · 3D scene · player movement · camera controls (both perspectives behind
-one `CameraRig`) · physics and collision · generated assets in gameplay · basic arena.
+## Decisions closed this milestone
 
-**Exit condition — "the player can move around a functioning 3D arena" — met and verified
-both headless and on screen.**
+- **D-005 camera: third-person**, decided at its deadline. The False Floor needs a gaze you
+  can aim independently of your heading; gravity inversion needs to be legible on your own
+  body; and the Lux3D contestant staying on screen serves the 30% tooling criterion. Both
+  modes remain behind `CameraRig`, `V` toggles.
+- **D-015** rule modules parse before they apply, and loading is all-or-nothing.
+- **D-016** hysteresis and the supporting-platform exemption.
+- **D-017** gravity inverts along Y only, instantly, with a countdown; Arena 02's ceiling is
+  continuous so inverting is always survivable.
+
+## Arenas
+
+| Arena | Mechanic | Notes |
+| --- | --- | --- |
+| `arena-01` "The Gauntlet" | THE FALSE FLOOR on the gap run | 12 platforms, 9/9 hops walkable |
+| `arena-02` "Inversion" | GRAVITY ZERO | floor islands too far to jump; you cross on the ceiling |
+
+The briefing line on the title card is generated from the rules actually loaded, not hardcoded.
+
+## Not yet verified
+
+- Frame rate under load. The Browser pane runs as a background page and throttles, so **no
+  timing or performance number measured through it is trustworthy**. Needs a real window.
+- How the False Floor *feels* to play now that it is on by default in Arena 01. It is a hard
+  mechanic; whether it is hard in the good way is a question for a human.
+- Arena 02 has not been played start to finish by anyone. The autopilot cannot solve it —
+  crossing needs gravity timing, not jumps — so it is covered by rule tests, not an
+  end-to-end run.
 
 ## Deviations
 
 - Raw `@dimforge/rapier3d-compat` instead of `@react-three/rapier` (D-011).
 - `npm run lint` still not wired up.
+- `SPATIAL_PORTAL` (Round 3) declared but unimplemented, by design.
 - The raw 12.95 MB platform slab remains in git history from Milestone 0.
-
-## Not yet verified
-
-- Frame rate under load (the pane throttles; needs a real window).
-- Whether each clip *looks* like its name beyond `Idle_Loop` — names and playback are
-  proven, individual motions are not.
-- How the course feels to a human now that it is visible and the spawn bug is gone.
 
 ## Commands
 
 ```
 npm run dev
-npm run analyze:arena                      # jump reachability for the authored route
+npm run analyze:arena
 npm run gen:asset      -- --prompt "..." --name x
 npm run gen:character  -- --prompt "..." --name x
 npm run optimize:asset [-- --max 1024]
@@ -113,10 +112,11 @@ npm run relabel:clips  -- <manifest entry>
 
 Four days to an 18 Nov feature freeze.
 
-## Next task — Milestone 2
+## Next task — Milestone 3
 
-1. Rule registry and `RuleContext` (architecture §3).
-2. `CONDITIONAL_PLATFORM` — THE FALSE FLOOR — on the `conditional` platforms already
-   authored in ARENA_01, keyed off `camera.forward`, built on `PhysicsWorld.setSolid`.
-3. `GRAVITY_DIRECTION` via `setGravity` and `setControllerUp`.
-4. Decide the camera perspective for real — D-005's deadline is the end of Milestone 2.
+1. `ChallengeConfig` schema in zod, matching PROJECT.md §6.
+2. Challenge generator calling an LLM with structured output — provider still undecided
+   (D-006), and it needs a server-side route so the key never reaches the browser.
+3. Validation pipeline: schema → reference → constraint → **solvability probe**. The probe
+   is `src/game/agent/autopilot.ts`, which already plays an arena headless.
+4. A known-good fallback pack so the game is complete with no network at all.

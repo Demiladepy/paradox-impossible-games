@@ -1,23 +1,30 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { Clone, useGLTF } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ArenaDefinition, PlatformDef } from "../../game/arena/types.ts";
+import type { GameSnapshot } from "../../game/GameWorld.ts";
 
 /**
- * Draws the arena.
+ * Draws the arena, and shows what the rules are doing to it.
  *
- * The visible platforms are Lux3D-generated geometry; the colliders behind them are
- * plain cuboids defined in the arena data. That separation is deliberate — a generated
- * mesh is far too dense to collide against and its exact shape is not under our control.
+ * The visible platforms are Lux3D-generated geometry; the colliders behind them are plain
+ * cuboids defined in the arena data. A generated mesh is far too dense to collide against
+ * and its exact shape is not under our control.
+ *
+ * Rule state arrives through a ref and is applied in `useFrame`, never through props: a
+ * platform can change solidity many times a second, and re-rendering the React tree at
+ * that rate to toggle a boolean would be absurd.
  */
 
 const SLAB_URL = "/assets/generated/platform-slab.glb";
 
 interface ArenaViewProps {
   arena: ArenaDefinition;
+  snapshotRef: React.RefObject<GameSnapshot | null>;
 }
 
-export function ArenaView({ arena }: ArenaViewProps) {
+export function ArenaView({ arena, snapshotRef }: ArenaViewProps) {
   const { scene: slab } = useGLTF(SLAB_URL);
 
   /**
@@ -48,35 +55,91 @@ export function ArenaView({ arena }: ArenaViewProps) {
     return wrapper;
   }, [slab]);
 
+  const solidRefs = useRef(new Map<string, THREE.Object3D>());
+  const ghostRefs = useRef(new Map<string, THREE.Object3D>());
+
+  const registerSolid = useCallback((id: string, object: THREE.Object3D | null) => {
+    if (object) solidRefs.current.set(id, object);
+    else solidRefs.current.delete(id);
+  }, []);
+
+  const registerGhost = useCallback((id: string, object: THREE.Object3D | null) => {
+    if (object) ghostRefs.current.set(id, object);
+    else ghostRefs.current.delete(id);
+  }, []);
+
+  useFrame(() => {
+    const snapshot = snapshotRef.current;
+    if (!snapshot) return;
+    const phantom = snapshot.rules.phantom;
+
+    for (const [id, object] of solidRefs.current) {
+      object.visible = !phantom.includes(id);
+    }
+    for (const [id, object] of ghostRefs.current) {
+      object.visible = phantom.includes(id);
+    }
+  });
+
   return (
     <group>
       {arena.platforms.map((platform) => (
-        <Platform key={platform.id} platform={platform} slab={unitSlab} />
+        <Platform
+          key={platform.id}
+          platform={platform}
+          slab={unitSlab}
+          registerSolid={registerSolid}
+          registerGhost={registerGhost}
+        />
       ))}
       <ExitMarker arena={arena} />
     </group>
   );
 }
 
-function Platform({ platform, slab }: { platform: PlatformDef; slab: THREE.Group }) {
-  const { position, size } = platform;
+interface PlatformProps {
+  platform: PlatformDef;
+  slab: THREE.Group;
+  registerSolid: (id: string, object: THREE.Object3D | null) => void;
+  registerGhost: (id: string, object: THREE.Object3D | null) => void;
+}
+
+function Platform({ platform, slab, registerSolid, registerGhost }: PlatformProps) {
+  const { position, size, id } = platform;
   const conditional = platform.surface === "conditional";
+
+  const boxGeometry = useMemo(
+    () => new THREE.BoxGeometry(size.x, size.y, size.z),
+    [size.x, size.y, size.z],
+  );
+  const edges = useMemo(() => new THREE.EdgesGeometry(boxGeometry), [boxGeometry]);
+  const lipEdges = useMemo(
+    () => new THREE.EdgesGeometry(new THREE.BoxGeometry(size.x, 0.02, size.z)),
+    [size.x, size.z],
+  );
 
   return (
     <group position={[position.x, position.y, position.z]}>
-      {platform.visual ? (
-        <Clone object={slab} scale={[size.x, size.y, size.z]} />
-      ) : (
-        <mesh receiveShadow>
-          <boxGeometry args={[size.x, size.y, size.z]} />
-          <meshStandardMaterial color="#1a1f2e" roughness={0.85} metalness={0.1} />
-        </mesh>
-      )}
+      {/* The platform as it exists when solid. */}
+      <group ref={(object) => registerSolid(id, object)}>
+        {platform.visual ? (
+          <Clone object={slab} scale={[size.x, size.y, size.z]} />
+        ) : (
+          <mesh receiveShadow geometry={boxGeometry}>
+            <meshStandardMaterial color="#1a1f2e" roughness={0.85} metalness={0.1} />
+          </mesh>
+        )}
+      </group>
+
+      {/* What is left when a rule unmakes it: an outline where the floor used to be, so
+          the player can see where to aim once they look away. Hidden by default. */}
+      <lineSegments ref={(object) => registerGhost(id, object)} geometry={edges} visible={false}>
+        <lineBasicMaterial color="#ff5f8f" transparent opacity={0.55} />
+      </lineSegments>
 
       {/* A bright lip on the top edge. Without it, dark platforms read as holes and you
           cannot judge a jump. */}
-      <lineSegments position={[0, size.y / 2 + 0.01, 0]}>
-        <edgesGeometry args={[new THREE.BoxGeometry(size.x, 0.02, size.z)]} />
+      <lineSegments position={[0, size.y / 2 + 0.01, 0]} geometry={lipEdges}>
         <lineBasicMaterial
           color={conditional ? "#5ef2c4" : "#7d92bd"}
           transparent

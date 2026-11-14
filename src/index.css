@@ -391,3 +391,53 @@ kbd {
 .view > .stage {
   height: 100%;
 }
+
+/* ---------- rule feedback ---------- */
+
+.gravity-banner {
+  position: absolute;
+  top: 13%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 22px;
+  border: 1px solid var(--warn);
+  border-radius: 10px;
+  background: rgba(20, 13, 4, 0.82);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.gravity-banner .label {
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.gravity-banner .count {
+  font-size: 13px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gravity-banner { animation: none; opacity: 1; }
+}
+
+.arena-pick {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 18px;
+  position: relative;
+}

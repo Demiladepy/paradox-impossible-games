@@ -66,6 +66,8 @@ export class PlayerController {
   position: Vec3;
   velocity: Vec3 = { x: 0, y: 0, z: 0 };
   grounded = false;
+  /** Which way is up, +1 or -1. Mirrors the physics world; see GRAVITY_DIRECTION. */
+  private upSign = 1;
   /** Direction the body faces, radians. Lags input so turns are not instant. */
   facing: number;
 
@@ -92,7 +94,7 @@ export class PlayerController {
   }
 
   get locomotion(): LocomotionState {
-    if (!this.grounded) return this.velocity.y > 0.6 ? "rise" : "fall";
+    if (!this.grounded) return this.velocity.y * this.upSign > 0.6 ? "rise" : "fall";
     const speed = this.speed;
     if (speed < 0.35) return "idle";
     if (speed < this.tuning.walkSpeed * 0.62) return "walk";
@@ -103,6 +105,8 @@ export class PlayerController {
   step(physics: PhysicsWorld, input: PlayerInput, basis: MovementBasis, dt: number): void {
     const tuning = this.tuning;
     const gravityY = physics.gravity.y;
+    const upSign = physics.upSign;
+    this.upSign = upSign;
 
     // --- intent ---------------------------------------------------------------
     let wishX = basis.forward.x * input.forward + basis.right.x * input.right;
@@ -134,14 +138,15 @@ export class PlayerController {
     const wantsJump = this.timeSinceJumpPressed <= tuning.jumpBuffer;
 
     if (canJump && wantsJump) {
-      this.velocity.y = this.jumpSpeed(gravityY);
+      this.velocity.y = upSign * this.jumpSpeed(gravityY);
       this.grounded = false;
       this.timeSinceGrounded = Infinity;
       this.timeSinceJumpPressed = Infinity;
-    } else if (this.grounded && this.velocity.y <= 0) {
-      // A small downward bias keeps the controller pressed into the floor, which is what
-      // makes snap-to-ground work on the way down a slope.
-      this.velocity.y = -2;
+    } else if (this.grounded && this.velocity.y * upSign <= 0) {
+      // A small bias towards the floor keeps the controller pressed into it, which is what
+      // makes snap-to-ground work on the way down a slope. "Towards the floor" flips with
+      // gravity.
+      this.velocity.y = -upSign * 2;
     } else {
       this.velocity.y = clamp(
         this.velocity.y + gravityY * dt,
@@ -175,8 +180,9 @@ export class PlayerController {
       if (Math.abs(desiredZ) > 1e-4 && Math.abs(applied.z) < Math.abs(desiredZ) * BLOCKED_RATIO) {
         this.velocity.z = applied.z / dt;
       }
-      // Hit a ceiling.
-      if (this.velocity.y > 0 && applied.y < this.velocity.y * dt * BLOCKED_RATIO) {
+      // Hit a ceiling — whichever surface is "above" under the current gravity.
+      const risingSpeed = this.velocity.y * upSign;
+      if (risingSpeed > 0 && applied.y * upSign < risingSpeed * dt * BLOCKED_RATIO) {
         this.velocity.y = 0;
       }
     }

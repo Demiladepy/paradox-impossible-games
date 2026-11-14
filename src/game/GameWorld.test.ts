@@ -20,7 +20,7 @@ function run(world: GameWorld, input: PlayerInput, steps: number): void {
 
 describe("GameWorld", () => {
   it("builds the arena and spawns the player without a renderer", async () => {
-    const world = await GameWorld.create(ARENA_01);
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
     expect(world.runStatus).toBe("running");
     for (const platform of ARENA_01.platforms) {
       expect(world.physics.hasBody(platform.id)).toBe(true);
@@ -29,7 +29,7 @@ describe("GameWorld", () => {
   });
 
   it("settles the player onto the start pad instead of falling through it", async () => {
-    const world = await GameWorld.create(ARENA_01);
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
     run(world, NO_INPUT, 60);
 
     const { player } = world.snapshot();
@@ -42,7 +42,7 @@ describe("GameWorld", () => {
   });
 
   it("moves the player forward, towards -Z", async () => {
-    const world = await GameWorld.create(ARENA_01);
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
     run(world, NO_INPUT, 30);
     const before = world.snapshot().player.position.z;
 
@@ -63,7 +63,7 @@ describe("GameWorld", () => {
 
     const positions: string[] = [];
     for (let pass = 0; pass < 2; pass++) {
-      const world = await GameWorld.create(ARENA_01, { seed: "determinism" });
+      const world = await GameWorld.create(ARENA_01, { seed: "determinism", rules: [] });
       for (const input of script) world.update(input, NO_LOOK, FIXED_TIMESTEP);
       const p = world.snapshot().player.position;
       positions.push(`${p.x.toFixed(12)},${p.y.toFixed(12)},${p.z.toFixed(12)}`);
@@ -74,7 +74,7 @@ describe("GameWorld", () => {
   });
 
   it("loses the run when the player falls past the kill plane", async () => {
-    const world = await GameWorld.create(ARENA_01);
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
     // Drop the player into the void beside the course.
     world.player.teleport(world.physics, { x: 40, y: 3, z: 0 }, 0);
     run(world, NO_INPUT, 240);
@@ -84,7 +84,7 @@ describe("GameWorld", () => {
   });
 
   it("wins the run when the player reaches the exit", async () => {
-    const world = await GameWorld.create(ARENA_01);
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
     const exit = ARENA_01.exit.position;
     world.player.teleport(world.physics, { x: exit.x, y: exit.y + 0.4, z: exit.z }, 0);
     run(world, NO_INPUT, 10);
@@ -94,7 +94,7 @@ describe("GameWorld", () => {
   });
 
   it("ignores input once the run is over", async () => {
-    const world = await GameWorld.create(ARENA_01);
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
     const exit = ARENA_01.exit.position;
     world.player.teleport(world.physics, { x: exit.x, y: exit.y + 0.4, z: exit.z }, 0);
     run(world, NO_INPUT, 10);
@@ -109,7 +109,7 @@ describe("GameWorld", () => {
   });
 
   it("restarts back to the spawn point", async () => {
-    const world = await GameWorld.create(ARENA_01);
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
     run(world, forward, 120);
     world.restart();
 
@@ -121,7 +121,7 @@ describe("GameWorld", () => {
   });
 
   it("can toggle collision off, which is what THE FALSE FLOOR will need", async () => {
-    const world = await GameWorld.create(ARENA_01);
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
     run(world, NO_INPUT, 60);
     expect(world.snapshot().player.grounded).toBe(true);
 

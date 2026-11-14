@@ -26,7 +26,9 @@ interface RunResult {
 }
 
 async function playArena(seed: string): Promise<RunResult> {
-  const world = await GameWorld.create(ARENA_01, { seed });
+  // Rules off on purpose: this measures whether the arena can be crossed at all.
+  // THE FALSE FLOOR is exercised separately in rules/rules.test.ts.
+  const world = await GameWorld.create(ARENA_01, { seed, rules: [] });
   const pilot = new Autopilot(ARENA_01, DEFAULT_TUNING);
 
   let steps = 0;

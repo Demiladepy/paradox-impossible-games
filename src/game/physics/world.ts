@@ -86,8 +86,21 @@ export class PhysicsWorld {
 
   setGravity(gravity: Vec3): void {
     this.world.gravity = gravity;
+    // The character controller resolves ground, slopes and autostep relative to "up".
+    // Inverting gravity without telling it leaves the player's feet pointing at the sky.
+    this.setControllerUp({ x: 0, y: gravity.y > 0 ? -1 : 1, z: 0 });
     // Bodies asleep under the old gravity would otherwise ignore the new direction.
     this.world.forEachRigidBody((body) => body.wakeUp());
+  }
+
+  /**
+   * +1 when "up" is +Y, -1 once gravity has been inverted.
+   *
+   * Movement code asks this rather than inspecting the gravity vector, so there is one
+   * place that decides which way is up.
+   */
+  get upSign(): number {
+    return this.world.gravity.y > 0 ? -1 : 1;
   }
 
   addStaticBox({ id, position, size }: BoxOptions): void {

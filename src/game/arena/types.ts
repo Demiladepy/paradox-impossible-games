@@ -1,4 +1,5 @@
 import type { Vec3 } from "../core/math.ts";
+import type { GameRule } from "../rules/types.ts";
 
 /**
  * An arena is data, not code.
@@ -49,7 +50,14 @@ export interface ArenaDefinition {
   route: string[];
   /** Fall below this and the run is lost. */
   killPlaneY: number;
+  /** Rise above this and the run is lost. Only meaningful once gravity can invert. */
+  killCeilingY?: number;
   gravity: Vec3;
+  /**
+   * Rules this arena ships with. A generated challenge replaces them; an empty array
+   * means ordinary physics, which is what the traversal tests use.
+   */
+  defaultRules?: GameRule[];
 }
 
 export function findPlatform(arena: ArenaDefinition, id: string): PlatformDef | undefined {

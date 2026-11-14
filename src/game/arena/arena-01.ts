@@ -1,5 +1,6 @@
 import { vec3 } from "../core/math.ts";
 import type { ArenaDefinition, PlatformDef } from "./types.ts";
+import type { GameRule } from "../rules/types.ts";
 
 /**
  * ARENA 01 — "The Gauntlet"
@@ -28,6 +29,26 @@ const platform = (
   ...(visual ? { visual } : {}),
 });
 
+/**
+ * THE FALSE FLOOR, applied to the gap run.
+ *
+ * Look at a platform and it stops being there; look away and it returns. The platform
+ * under your feet is exempt, so you can always stand still and think — you can unmake the
+ * floor ahead of you, never the floor beneath you.
+ */
+export const FALSE_FLOOR_RULE: GameRule = {
+  id: "rule-false-floor-01",
+  type: "CONDITIONAL_PLATFORM",
+  targetIds: ["step-01", "step-02", "step-03", "step-04"],
+  parameters: {
+    solidWhenObserved: false,
+    coneDegrees: 58,
+    hysteresisDegrees: 10,
+    exemptSupporting: true,
+  },
+  trigger: { type: "PLAYER_CAMERA_DIRECTION" },
+};
+
 export const ARENA_01: ArenaDefinition = {
   id: "arena-01",
   name: "The Gauntlet",
@@ -41,6 +62,8 @@ export const ARENA_01: ArenaDefinition = {
 
   // Sits just above the exit pad surface (5.7).
   exit: { id: "exit-01", position: vec3(0, 6.1, -37), radius: 1.6 },
+
+  defaultRules: [FALSE_FLOOR_RULE],
 
   route: [
     "start-pad",

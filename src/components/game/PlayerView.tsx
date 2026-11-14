@@ -26,11 +26,13 @@ const MODEL_YAW_OFFSET = Math.PI;
 interface PlayerViewProps {
   /** Read every frame rather than passed as a prop, to avoid re-rendering at 60 Hz. */
   locomotionRef: React.RefObject<LocomotionState>;
+  /** +1 normal, -1 when gravity has inverted and the player stands on the ceiling. */
+  upSignRef: React.RefObject<number>;
   visible: boolean;
 }
 
 export const PlayerView = forwardRef<THREE.Group, PlayerViewProps>(function PlayerView(
-  { locomotionRef, visible },
+  { locomotionRef, upSignRef, visible },
   ref,
 ) {
   const inner = useRef<THREE.Group>(null);
@@ -73,7 +75,18 @@ export const PlayerView = forwardRef<THREE.Group, PlayerViewProps>(function Play
     }
   }, [animations]);
 
+  // Stand the character on whichever surface gravity has chosen. Rotating 180 degrees
+  // about the local Z axis turns them upside down while leaving them facing forward; a
+  // rotation about X would flip the facing too, and a negative scale would invert the
+  // mesh winding and break the lighting.
   useFrame(() => {
+    const group = inner.current;
+    const upSign = upSignRef.current ?? 1;
+    if (group) {
+      group.rotation.z = upSign < 0 ? Math.PI : 0;
+      group.position.y = fit.footOffset * upSign;
+    }
+
     const state = locomotionRef.current ?? "idle";
     const wanted = CLIP_FOR_STATE[state];
     if (wanted === current.current) return;

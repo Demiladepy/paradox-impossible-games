@@ -74,8 +74,8 @@ README and the report will say exactly that.
 
 ---
 
-## D-005 — Camera perspective: deferred, built behind an interface
-**Status:** deferred by owner · 2026-11-12 · decide after the Round 1 prototype
+## D-005 — Third-person camera
+**Status:** RESOLVED · 2026-11-14 · decided at the Milestone 2 deadline, as planned
 
 Round 1 ("platforms are solid only when you are *not* looking at them") is close to unplayable
 in first person: the player must walk where they cannot see, which reads as a broken control
@@ -85,10 +85,22 @@ In third person the gaze direction becomes a deliberate, visible input the playe
 critically, the Lux3D-generated contestant is **on screen the whole time**, which is worth real
 points under the 30% "use of Manycore tools" criterion and makes a far better demo video.
 
-**Owner decision:** do not lock this yet. The camera is built behind a `CameraRig` interface
-with both modes implemented, and we test both against the real False Floor mechanic on day 2.
-Hard deadline for the choice: **end of Milestone 2 (14 Nov)** — after that the cost of
-switching grows, because the gaze predicate, the HUD and the animation set all depend on it.
+**Resolution, with the mechanic built and running:** third-person, and the reasoning is now
+evidence rather than prediction.
+
+1. **The False Floor needs an aimable gaze.** In third person the view cone is something you
+   steer independently of where you are walking: you can angle the camera so a platform sits
+   just outside the cone, keeping it solid, while still seeing your route. First person welds
+   gaze to heading, so "look away to cross" literally means crossing blind.
+2. **Gravity inversion has to be legible on your own body.** When `upSign` flips, the
+   contestant rotates and stands on the ceiling. In first person the only cue is that the world
+   turned over, which is disorienting in the unhelpful way.
+3. **The Lux3D contestant stays on screen the whole time**, which is worth real marks under the
+   30% tooling criterion and makes a far better demo video.
+
+Both modes stay implemented behind `CameraRig` and `V` still toggles them — first person is a
+good way to feel how hostile the mechanic is, and costs nothing to keep. Third person is the
+default and the one the demo is designed around.
 
 ---
 
@@ -279,3 +291,54 @@ whether an AI-proposed challenge is fair before a player is allowed in.
 
 Note what it is not: completing a run proves *an agent completed this configuration*. It is
 not a proof that every configuration is winnable, and we will not describe it as one.
+
+---
+
+## D-015 — Rules are modules with a parse step, and loading is all-or-nothing
+**Status:** accepted · 2026-11-14
+
+`RuleModule.parse(rule, arena)` returns either typed parameters or a message explaining the
+refusal. The engine parses every rule in a set before applying any of them, so a failure
+late in the list cannot leave earlier rules half-installed — a player would otherwise be
+dropped into a world that does not match its own briefing.
+
+This parse step is where Milestone 3's challenge validation will live. It already checks
+the things a generated rule gets wrong: target ids that do not exist, targets that are not
+platforms (the exit is a trigger volume with no collider to switch off), triggers the
+module does not implement, parameters out of range or of the wrong type, duplicate rule
+ids, and semantic contradictions such as a gravity warning longer than its own interval.
+
+`SPATIAL_PORTAL` is declared in the type union and deliberately unimplemented. A challenge
+requesting it is **refused with a reason**, never silently ignored.
+
+## D-016 — Two details that turn CONDITIONAL_PLATFORM from a gimmick into a mechanic
+**Status:** accepted · 2026-11-14
+
+**Hysteresis.** A single dot-product threshold makes a platform at the edge of the view
+cone flicker many times a second as the camera breathes — the floor buzzing in and out of
+existence. The angle at which a platform becomes observed is narrower than the angle at
+which it stops being observed, so it latches. A test wobbles the camera on the cone
+boundary for three seconds and asserts at most two transitions.
+
+**The supporting platform is exempt.** A rule that deletes the ground under your feet the
+instant you glance down is a punishment, not a puzzle — and in third person the camera
+looks over the player at exactly the platform they are standing on. You can unmake the
+floor ahead of you, never the floor beneath you.
+
+## D-017 — Gravity inverts along Y only, instantly, with a countdown
+**Status:** accepted · 2026-11-14
+
+Stated plainly so the report does not overclaim: `GRAVITY_DIRECTION` flips "down" between
+-Y and +Y. It does **not** support arbitrary gravity directions. Walking on walls needs the
+character controller re-based onto an arbitrary axis, which is not a thing to attempt four
+days from a deadline.
+
+The flip is instantaneous after a visible countdown. An eased transition through zero was
+considered and rejected: it leaves the player floating with no control authority and no
+clear moment of change, and it creates a window where the gravity vector is near zero that
+every "which way is up" calculation then has to special-case.
+
+Arena 02's ceiling is **continuous** across the whole corridor. An earlier version had
+ceiling only above the floor gaps, which meant inverting while standing on a floor island
+threw the player into the sky with nothing to land on. Inverting must always be survivable;
+the danger belongs in the *return*, which is on a schedule you can see and plan around.
