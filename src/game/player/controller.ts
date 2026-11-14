@@ -41,6 +41,12 @@ export interface PlayerTuning {
   halfHeight: number;
 }
 
+/**
+ * Fraction of the desired movement that must be lost before we call it a collision.
+ * Below this, the shortfall is the character controller's own slop.
+ */
+const BLOCKED_RATIO = 0.5;
+
 export const DEFAULT_TUNING: PlayerTuning = {
   walkSpeed: 6.2,
   sprintSpeed: 9.4,
@@ -155,14 +161,26 @@ export class PlayerController {
 
     // Blocked horizontally? Drop the velocity we did not get to use, otherwise the
     // player keeps "pushing" into a wall and shoots off the moment it ends.
+    //
+    // The threshold is a ratio, not an epsilon. Rapier's character controller shaves a
+    // little off every step for the collision offset, autostep and ground snapping, so a
+    // small shortfall is normal on flat ground — treating that as "blocked" ratchets
+    // velocity down until the player creeps at walking pace divided by twenty.
     if (dt > 0) {
-      if (Math.abs(applied.x) < Math.abs(this.velocity.x * dt) - 1e-4) this.velocity.x = applied.x / dt;
-      if (Math.abs(applied.z) < Math.abs(this.velocity.z * dt) - 1e-4) this.velocity.z = applied.z / dt;
+      const desiredX = this.velocity.x * dt;
+      const desiredZ = this.velocity.z * dt;
+      if (Math.abs(desiredX) > 1e-4 && Math.abs(applied.x) < Math.abs(desiredX) * BLOCKED_RATIO) {
+        this.velocity.x = applied.x / dt;
+      }
+      if (Math.abs(desiredZ) > 1e-4 && Math.abs(applied.z) < Math.abs(desiredZ) * BLOCKED_RATIO) {
+        this.velocity.z = applied.z / dt;
+      }
       // Hit a ceiling.
-      if (this.velocity.y > 0 && applied.y < this.velocity.y * dt - 1e-4) this.velocity.y = 0;
+      if (this.velocity.y > 0 && applied.y < this.velocity.y * dt * BLOCKED_RATIO) {
+        this.velocity.y = 0;
+      }
     }
 
-    this.position = physics.characterPosition;
     this.grounded = result.grounded;
 
     // --- facing ----------------------------------------------------------------
@@ -170,6 +188,17 @@ export class PlayerController {
       const desired = Math.atan2(-this.velocity.x, -this.velocity.z);
       this.facing += angleDelta(this.facing, desired) * Math.min(1, dt * 14);
     }
+  }
+
+  /**
+   * Read the body's position back after the world has stepped.
+   *
+   * `moveCharacter` only queues a kinematic translation; the body does not actually move
+   * until `world.step()` runs. Reading the position inside `step()` would report where
+   * the player was a frame ago.
+   */
+  syncFromPhysics(physics: PhysicsWorld): void {
+    this.position = physics.characterPosition;
   }
 
   teleport(physics: PhysicsWorld, position: Vec3, yaw: number): void {

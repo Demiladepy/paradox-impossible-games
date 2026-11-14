@@ -1,119 +1,122 @@
 # Build Status
 
-**Updated:** 2026-11-13 · **Milestone 0: COMPLETE** · **Milestone 1: code complete, one
-verification outstanding** · Next: Milestone 2 (reality rule engine)
+**Updated:** 2026-11-14 · **Milestone 0: COMPLETE** · **Milestone 1: COMPLETE, verified end
+to end** · Next: Milestone 2 (reality rule engine)
 
 ## Verified — actually run on this machine
 
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | passes, 0 errors |
-| `npm run test` | **42/42 passing** across 4 files |
-| `npm run build` | passes — main 1,265 kB (350 kB gzip) + 4,335 kB lazy rapier chunk |
-| Asset optimisation | **54.24 MB → 4.68 MB (−91%)**, clips and skins intact |
+| `npm run test` | **51/51 passing** across 5 files |
+| `npm run build` | passes — main 1,265 kB (350 kB gzip) + lazy 4,335 kB rapier chunk |
+| `npm run analyze:arena` | 9/9 hops clearable at walking speed |
 
-### The simulation runs headless
+### End to end, headless
 
-`src/game/GameWorld.test.ts` drives the real arena in plain Node — no DOM, no renderer:
+The autopilot plays ARENA_01 from spawn to exit with no human input, **winning in 9.4
+simulated seconds**, and the run is reproducible step for step. That single test exercises
+arena data, Rapier collision, the character controller, jump ballistics, the camera basis
+movement is expressed in, and the objective check.
 
-- the player settles onto the start pad rather than falling through it
-- forward input moves the player towards -Z
-- **determinism**: the same 180-step input script twice gives bit-identical positions
-- falling past the kill plane loses the run; reaching the exit wins it
-- input is ignored once the run is over; restart returns to spawn
-- `setSolid(id, false)` drops the player through a platform — the primitive THE FALSE
-  FLOOR is built on
+### End to end, in a real browser
 
-This is the foundation the Milestone 3 solvability probe needs (D-011).
+Confirmed by driving the live page (synthetic key events + the dev scene handle):
 
-### The animation contract is checked against the real asset
+- Both GLBs fetch and parse (1.4 MB and 1.9 MB, ~70 ms each); Rapier's chunk loads and its
+  WASM initialises client-side.
+- Input moves the player: speed ramps 0 → 3.37 → 6.20 m/s, locomotion transitions
+  `fall → walk → jog` exactly as the controller defines them.
+- Jumping works: the player cleared four platforms under synthetic input.
+- **The skeleton animates.** Sampling `mixamorigLeftUpLeg` over time shows the bone
+  rotating while idle, so `Idle_Loop` is genuinely playing — the renamed clips drive the
+  rig. (Lux3D's auto-rig uses Mixamo bone naming.)
+- The arena renders legibly: contestant on the start pad facing down the course, teal lips
+  on the conditional platforms, the staircase and the exit beam all visible from spawn.
+- `MODEL_YAW_OFFSET = Math.PI` was a correct guess — the contestant faces the right way.
 
-`src/game/player/animation.test.ts` reads the shipped `contestant-01-anim.glb` and asserts
-every clip the game asks for by name exists, that the clips reserved for later rounds
-survive, and that **no `animation_N` aliases remain**. A pipeline regression that silently
-left the contestant standing still now fails the suite.
+Caveat: the Browser pane runs as a background page, so its frame rate is throttled and
+**no timing or performance number from it is trustworthy**. Frame rate under load is still
+unmeasured.
 
-### Asset optimisation (D-007)
+## Bugs found and fixed this session
 
-| Asset | Before | After |
-| --- | --- | --- |
-| contestant-01-anim.glb | 20.98 MB | **1.89 MB** |
-| contestant-01-rigged.glb | 20.31 MB | **1.42 MB** |
-| platform-slab.glb | 12.95 MB | **1.36 MB** |
+All four were silent — none threw, and three looked like "the controls feel broken":
 
-Textures resized to 1024×1024 and re-encoded as WebP; all 10 clips, the skin and the
-54-node skeleton verified intact afterwards. Originals kept in `_raw/` (git-ignored).
+1. **Spawn penetration.** The capsule spawned 0.18 m inside the start pad. Rapier's
+   character controller spent ~32 s resolving the overlap instead of moving; the player
+   crept at ~0.3 m/s. Now `spawnClearance()` + a test.
+2. **Velocity clamp ratchet.** The "am I blocked?" check used a `1e-4` absolute tolerance,
+   but the controller shaves a sliver off every step for collision offset and ground
+   snapping. Normal walking was read as a collision and velocity was ratcheted to a crawl.
+   Now a ratio threshold.
+3. **Stale position read.** `moveCharacter` only queues a kinematic translation; the body
+   does not move until `world.step()`. The controller read its own position a frame early.
+   Now `syncFromPhysics()` after the step.
+4. **Wedge gap.** The first gap was 0.50 m against a 0.72 m body: too narrow to fall
+   through, too wide to step over. Holding forward did nothing. Now flush, with
+   `wedgeGaps()` guarding the class of bug.
 
-### Confirmed in a real browser
+Plus two autopilot defects worth noting, because the probe has to be trustworthy:
+it sprinted gaps that walking already cleared and overshot a platform; and it compared the
+capsule *centre* against a platform *surface*, so a correctly-standing agent looked 0.88 m
+too high and never advanced its waypoint.
 
-- The app shell renders with no console errors.
-- `GameWorld.create()` **resolves in the browser** — the title overlay only renders once it
-  has, so Rapier's WASM initialised and the arena was built client-side.
-- The lazy rapier chunk is fetched at runtime, confirming D-012 works outside the bundler.
+## Design change
 
-## NOT verified — needs a human to look
+The ascent was three 1.4 m climbs with lateral offsets — fiddly for a human and for the
+agent. It is now a staircase: four even 1.0 m rises with overlapping footprints. The gap
+run keeps the jumping. PARADOX should be hard because the rules are strange, not because
+the geometry is fussy.
 
-**Nobody has seen the game render.** The Browser pane was hidden for this whole session and
-the session was not open in any window, so the document stayed 0×0, the canvas never got a
-real size, and React Three Fiber never drew a frame. No screenshot was possible.
+## Readability pass
 
-Specifically unverified:
+The course was effectively invisible past the start pad: fog began at 26 m over a 41 m
+course, and the generated obsidian is nearly black with no fill light. Fog now starts at
+70 m, an ambient fill was added, platform lips were brightened, and the camera pitch was
+dropped so it looks down the course rather than at the player's shoulders.
 
-- [ ] The arena and the Lux3D slab platforms actually draw, and the course reads clearly.
-- [ ] The contestant renders at a sensible scale and the right way round
-      (`MODEL_YAW_OFFSET` in `PlayerView.tsx` assumes the model faces +Z — **a guess**).
-- [ ] The retargeted clips play and look like their names. Names are proven correct; the
-      *motion* is not.
-- [ ] Movement feel: jump height against the authored gaps, camera follow, mouse look.
-- [ ] Frame rate with ~9 slab platforms on screen.
+## Milestone 1 scope — all met
 
-**To check:** open the Browser pane, or run `npm run dev` and open http://localhost:5173.
-Click the canvas to take control. `V` switches first/third person, `R` restarts.
+Application shell · 3D scene · player movement · camera controls (both perspectives behind
+one `CameraRig`) · physics and collision · generated assets in gameplay · basic arena.
 
-Expect to find at least one thing wrong here. The model orientation in particular is a
-coin-flip, and jump distances were authored by eye against tuning values, not play-tested.
-
-## Milestone 1 scope
-
-| Required | State |
-| --- | --- |
-| Application shell | done — Play / Asset Lab tabs |
-| 3D scene | done, unseen |
-| Player movement | done, headless-tested, unplayed |
-| Camera controls | done — both perspectives behind one `CameraRig` (D-005), unseen |
-| Physics and collision | done, headless-tested |
-| Load the generated asset | done — slab on platforms, contestant as the player |
-| Basic arena | done — ARENA_01 "The Gauntlet", 12 platforms |
-
-**Exit condition — "the player can move around a functioning 3D arena" — is met in
-simulation and unconfirmed on screen.**
+**Exit condition — "the player can move around a functioning 3D arena" — met and verified
+both headless and on screen.**
 
 ## Deviations
 
-- `@react-three/rapier` removed in favour of raw `@dimforge/rapier3d-compat` (D-011).
+- Raw `@dimforge/rapier3d-compat` instead of `@react-three/rapier` (D-011).
 - `npm run lint` still not wired up.
 - The raw 12.95 MB platform slab remains in git history from Milestone 0.
+
+## Not yet verified
+
+- Frame rate under load (the pane throttles; needs a real window).
+- Whether each clip *looks* like its name beyond `Idle_Loop` — names and playback are
+  proven, individual motions are not.
+- How the course feels to a human now that it is visible and the spawn bug is gone.
 
 ## Commands
 
 ```
 npm run dev
-npm run gen:asset      -- --prompt "..." --name x [--version G1|G1-Turbo] [--faceCount n]
+npm run analyze:arena                      # jump reachability for the authored route
+npm run gen:asset      -- --prompt "..." --name x
 npm run gen:character  -- --prompt "..." --name x
-npm run optimize:asset [-- --max 1024] [-- name]
+npm run optimize:asset [-- --max 1024]
 npm run inspect:asset  [-- file.glb]
 npm run relabel:clips  -- <manifest entry>
 ```
 
 ## Schedule
 
-Five days to an 18 Nov feature freeze.
+Four days to an 18 Nov feature freeze.
 
 ## Next task — Milestone 2
 
-1. Play-test Arena 01 and fix whatever the first look exposes.
-2. Rule registry and `RuleContext` (architecture §3).
-3. `CONDITIONAL_PLATFORM` — THE FALSE FLOOR — on the `conditional` platforms already
-   authored in ARENA_01, keyed off `camera.forward`.
-4. `GRAVITY_DIRECTION`, using `PhysicsWorld.setGravity` and `setControllerUp`.
-5. Decide the camera perspective for real (D-005 deadline is end of Milestone 2).
+1. Rule registry and `RuleContext` (architecture §3).
+2. `CONDITIONAL_PLATFORM` — THE FALSE FLOOR — on the `conditional` platforms already
+   authored in ARENA_01, keyed off `camera.forward`, built on `PhysicsWorld.setSolid`.
+3. `GRAVITY_DIRECTION` via `setGravity` and `setControllerUp`.
+4. Decide the camera perspective for real — D-005's deadline is the end of Milestone 2.

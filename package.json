@@ -15,7 +15,8 @@
     "gen:character": "node --env-file=.env --import tsx scripts/lux3d/character.ts",
     "inspect:asset": "node --import tsx scripts/lux3d/inspect.ts",
     "relabel:clips": "node --import tsx scripts/lux3d/relabel.ts",
-    "optimize:asset": "node --import tsx scripts/lux3d/optimize.ts"
+    "optimize:asset": "node --import tsx scripts/lux3d/optimize.ts",
+    "analyze:arena": "node --import tsx scripts/analyze-arena.ts"
   },
   "dependencies": {
     "@dimforge/rapier3d-compat": "^0.21.0",

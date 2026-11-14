@@ -109,6 +109,7 @@ export class GameWorld {
     for (let i = 0; i < steps; i++) {
       this.player.step(this.physics, effective, this.camera.movementBasis, FIXED_TIMESTEP);
       this.physics.step();
+      this.player.syncFromPhysics(this.physics);
       this.evaluateObjective();
     }
 

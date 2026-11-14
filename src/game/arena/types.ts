@@ -41,6 +41,12 @@ export interface ArenaDefinition {
   spawnYaw: number;
   exit: ExitDef;
   platforms: PlatformDef[];
+  /**
+   * The intended path from spawn to exit, as platform ids. Reachability analysis and the
+   * Milestone 3 solvability probe both walk this, so it is data rather than something a
+   * player or an agent has to infer.
+   */
+  route: string[];
   /** Fall below this and the run is lost. */
   killPlaneY: number;
   gravity: Vec3;

@@ -28,7 +28,7 @@ export interface CameraRigOptions {
 export class CameraRig {
   mode: CameraMode;
   yaw: number;
-  pitch = -0.12;
+  pitch = -0.22;
   distance: number;
   readonly eyeHeight: number;
 
@@ -110,7 +110,7 @@ export class CameraRig {
 
   reset(yaw: number, target: Vec3): void {
     this.yaw = yaw;
-    this.pitch = -0.12;
+    this.pitch = -0.22;
     this.initialized = false;
     this.update(target, 0);
   }

@@ -236,3 +236,46 @@ in the main bundle:
 
 `initPhysics()` does the dynamic import, so the shell and the Asset Lab load without
 paying for physics at all, and the arena fetches it while the title overlay is up.
+
+---
+
+## D-013 — Level geometry is verified against ballistics, not authored by eye
+**Status:** accepted · 2026-11-14
+
+`src/game/arena/reach.ts` computes, from the real tuning values, whether each hop on an
+arena's route is actually makeable: closed-form jump ballistics, edge-to-edge AABB gaps,
+and the rise between surfaces. `npm run analyze:arena` prints it; tests assert it.
+
+Three classes of defect this now catches, all of which were present in ARENA_01 and none
+of which fail loudly at runtime:
+
+1. **Unreachable or sprint-only hops.** A gap the designer can clear because they know the
+   route, and nobody else can.
+2. **Wedge gaps** (`wedgeGaps`). A gap narrower than the player's body leaves the capsule
+   resting on both lips: holding forward does nothing. It reads as broken controls, not as
+   "jump here". ARENA_01's very first gap was 0.50 m against a 0.72 m body.
+3. **Spawn penetration** (`spawnClearance`). Spawning the capsule inside the floor makes
+   Rapier's character controller spend its steps resolving the overlap rather than moving.
+   The player crept at roughly 0.3 m/s for the first thirty seconds. This is the one that
+   cost the most to find, and it is now a one-line assertion.
+
+The ascent was then rebuilt as a staircase with zero gaps and even 1.0 m rises. PARADOX
+should be difficult because its rules are strange, not because its geometry demands
+precision platforming — the arena is the stage for the mechanic, not the challenge itself.
+
+## D-014 — The autopilot is the solvability probe, arriving early
+**Status:** accepted · 2026-11-14
+
+`src/game/agent/autopilot.ts` follows an arena's authored route, aims at the next platform,
+sprints only when the reach analysis says walking cannot clear the gap, and jumps when it
+runs out of floor or stops making progress. `autopilot.test.ts` drives it from spawn to
+exit in plain Node and asserts the run is won, is reproducible, and finishes in a sensible
+time.
+
+Today it is the end-to-end test: it exercises arena data, Rapier collision, the character
+controller, jump ballistics, the camera basis movement is expressed in, and the objective
+check, in one pass, with no browser. In Milestone 3 it becomes the thing that decides
+whether an AI-proposed challenge is fair before a player is allowed in.
+
+Note what it is not: completing a run proves *an agent completed this configuration*. It is
+not a proof that every configuration is winnable, and we will not describe it as one.

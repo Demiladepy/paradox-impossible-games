@@ -78,9 +78,9 @@ function Platform({ platform, slab }: { platform: PlatformDef; slab: THREE.Group
       <lineSegments position={[0, size.y / 2 + 0.01, 0]}>
         <edgesGeometry args={[new THREE.BoxGeometry(size.x, 0.02, size.z)]} />
         <lineBasicMaterial
-          color={conditional ? "#5ef2c4" : "#44506b"}
+          color={conditional ? "#5ef2c4" : "#7d92bd"}
           transparent
-          opacity={conditional ? 0.9 : 0.55}
+          opacity={conditional ? 0.95 : 0.8}
         />
       </lineSegments>
     </group>

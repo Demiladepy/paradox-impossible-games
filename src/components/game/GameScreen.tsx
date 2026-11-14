@@ -98,8 +98,14 @@ function SceneLighting() {
   return (
     <>
       <color attach="background" args={["#05060a"]} />
-      <fog attach="fog" args={["#05060a", 26, 96]} />
-      <hemisphereLight args={["#8fc6ff", "#0a0d16", 0.5]} />
+      {/* The course runs 41 m. Fog starting at 26 m faded the back half of it into the
+          background, so the exit and the platforms leading to it were invisible from the
+          start pad — you cannot aim a jump at something you cannot see. Now it only
+          softens the void well beyond the arena. */}
+      <fog attach="fog" args={["#05060a", 70, 210]} />
+      {/* Generated obsidian is nearly black; without fill it reads as a hole. */}
+      <ambientLight intensity={0.35} color="#9fc4ff" />
+      <hemisphereLight args={["#8fc6ff", "#141a28", 0.9]} />
       <directionalLight
         position={[14, 26, 10]}
         intensity={2.4}
@@ -126,10 +132,20 @@ interface SimulationProps {
 }
 
 function Simulation({ world, input, snapshotRef }: SimulationProps) {
-  const { camera } = useThree();
+  const { camera, scene } = useThree();
   const playerRef = useRef<THREE.Group>(null);
   const locomotionRef = useRef<LocomotionState>("idle");
   const [thirdPerson, setThirdPerson] = useState(world.camera.mode === "third");
+
+  // Dev-only handle for inspecting the live scene from the console or a test harness.
+  // Stripped from production builds by the import.meta.env.DEV guard.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    (window as unknown as Record<string, unknown>)["__paradox"] = { scene, camera, world };
+    return () => {
+      delete (window as unknown as Record<string, unknown>)["__paradox"];
+    };
+  }, [scene, camera, world]);
 
   useFrame((_, delta) => {
     const raw = input.consume();
