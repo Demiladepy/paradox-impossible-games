@@ -1,86 +1,104 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { findArena } from "../../game/arena/registry.ts";
-import { GameWorld, type GameSnapshot } from "../../game/GameWorld.ts";
+import { Round, type RoundResult, type RoundSnapshot } from "../../game/progression/round.ts";
 import { DEFAULT_TUNING, type LocomotionState } from "../../game/player/controller.ts";
 import { requestChallenge, type ChallengeResult } from "../../integrations/ai/challenge-client.ts";
 import { useInput, type InputHandle } from "../../hooks/useInput.ts";
 import { ArenaView } from "./ArenaView.tsx";
-import { PlayerView } from "./PlayerView.tsx";
+import { CONTESTANT_URL, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 
 /**
- * The game screen.
+ * The game.
  *
- * A round is a `ChallengeConfig`: which arena, which rules, what winning means, how long.
- * It arrives from `/api/challenge` already validated and probed, or from the built-in pack
- * when there is no network — the title card always says which.
+ * A *run* is three rounds of rising difficulty. Each round is a `ChallengeConfig` — which
+ * arena, which rules, what winning means, how long — that arrives from `/api/challenge`
+ * already validated and probed, or from the built-in pack when there is no network. The
+ * title card always says which.
  *
- * The React tree is a *view*. It never owns game state, and nothing here re-renders per
+ * The React tree is a view. It never owns game state, and nothing here re-renders per
  * frame: the simulation is read inside `useFrame` and written onto three.js objects.
  */
 
-/** The physics capsule is positioned at its centre; the model stands on its feet. */
 const FOOT_DROP = DEFAULT_TUNING.halfHeight + DEFAULT_TUNING.radius;
+const ROUNDS_PER_RUN = 3;
+const RIVAL_TINTS = ["#ff5f6d", "#ffb347"];
+
+type Phase = "loading" | "briefing" | "playing" | "roundOver" | "runOver";
+
+interface CompletedRound {
+  title: string;
+  result: RoundResult;
+}
 
 export function GameScreen() {
   const containerRef = useRef<HTMLDivElement>(null);
   const input = useInput(containerRef);
 
-  const [result, setResult] = useState<ChallengeResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [difficulty, setDifficulty] = useState<1 | 2 | 3>(1);
-  const [world, setWorld] = useState<GameWorld | null>(null);
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [roundIndex, setRoundIndex] = useState(0);
+  const [history, setHistory] = useState<CompletedRound[]>([]);
+  const [challenge, setChallenge] = useState<ChallengeResult | null>(null);
+  const [round, setRound] = useState<Round | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
+  const [rivalUrl, setRivalUrl] = useState(CONTESTANT_URL);
 
-  const snapshotRef = useRef<GameSnapshot | null>(null);
-  const [hud, setHud] = useState<GameSnapshot | null>(null);
+  const snapshotRef = useRef<RoundSnapshot | null>(null);
+  const [hud, setHud] = useState<RoundSnapshot | null>(null);
 
-  const newRound = useCallback((level: 1 | 2 | 3) => {
-    setLoading(true);
-    setDifficulty(level);
-    requestChallenge(level)
-      .then(setResult)
-      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
-      .finally(() => setLoading(false));
+  // Use the rival character only once it exists on disk — a missing GLB would suspend
+  // forever behind the Canvas boundary and the game would simply never appear.
+  useEffect(() => {
+    fetch("/assets/generated/manifest.json")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((manifest: { entries?: { name: string }[] } | null) => {
+        const has = manifest?.entries?.some((entry) => entry.name === "rival-01-anim");
+        if (has) setRivalUrl(RIVAL_URL);
+      })
+      .catch(() => {
+        /* keep the default contestant */
+      });
   }, []);
 
-  useEffect(() => {
-    newRound(1);
-  }, [newRound]);
+  const loadRound = useCallback((index: number) => {
+    setPhase("loading");
+    setRoundIndex(index);
+    const difficulty = (Math.min(index + 1, 3) as 1 | 2 | 3);
+    requestChallenge(difficulty)
+      .then(setChallenge)
+      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)));
+  }, []);
 
-  // Build the world whenever a new challenge arrives.
-  useEffect(() => {
-    if (!result) return;
-    const challenge = result.challenge;
-    const arena = findArena(challenge.arenaId);
-    if (!arena) {
-      setError(`Challenge names an unknown arena "${challenge.arenaId}"`);
-      return;
-    }
+  const startRun = useCallback(() => {
+    setHistory([]);
+    loadRound(0);
+  }, [loadRound]);
 
+  useEffect(() => {
+    startRun();
+  }, [startRun]);
+
+  // Build the round whenever a challenge arrives.
+  useEffect(() => {
+    if (!challenge) return;
     let disposed = false;
-    let created: GameWorld | null = null;
-    setWorld(null);
+    let created: Round | null = null;
+    setRound(null);
     snapshotRef.current = null;
 
-    GameWorld.create(arena, {
-      seed: challenge.id,
-      rules: challenge.rules,
-      objective: challenge.objective,
-      durationSeconds: challenge.durationSeconds,
-    })
+    Round.create(challenge.challenge)
       .then((instance) => {
         if (disposed) {
           instance.dispose();
           return;
         }
-        for (const rejection of instance.rules.rejected) {
+        for (const rejection of instance.world.rules.rejected) {
           console.error(`[rules] refused ${rejection.ruleId}: ${rejection.reason}`);
         }
         created = instance;
-        setWorld(instance);
+        setRound(instance);
+        setPhase("briefing");
       })
       .catch((cause: unknown) => {
         setError(cause instanceof Error ? cause.message : String(cause));
@@ -90,15 +108,31 @@ export function GameScreen() {
       disposed = true;
       created?.dispose();
     };
-  }, [result]);
+  }, [challenge]);
 
+  // Sample for the HUD, and notice when a round ends.
   useEffect(() => {
     const id = window.setInterval(() => {
-      if (snapshotRef.current) setHud(snapshotRef.current);
-      setLocked(input.isPointerLocked());
+      const snapshot = snapshotRef.current;
+      if (snapshot) setHud(snapshot);
+      const isLocked = input.isPointerLocked();
+      setLocked(isLocked);
+
+      if (snapshot?.result && phase === "playing") {
+        setHistory((prior) => [
+          ...prior,
+          { title: challenge?.challenge.title ?? "Round", result: snapshot.result! },
+        ]);
+        setPhase(roundIndex + 1 >= ROUNDS_PER_RUN ? "runOver" : "roundOver");
+        if (document.pointerLockElement) document.exitPointerLock();
+      }
     }, 100);
     return () => window.clearInterval(id);
-  }, [input]);
+  }, [input, phase, roundIndex, challenge]);
+
+  useEffect(() => {
+    if (phase === "briefing" && locked) setPhase("playing");
+  }, [phase, locked]);
 
   if (error) {
     return (
@@ -107,6 +141,8 @@ export function GameScreen() {
       </div>
     );
   }
+
+  const overlayOpen = phase !== "playing";
 
   return (
     <div className="stage" ref={containerRef}>
@@ -121,27 +157,41 @@ export function GameScreen() {
         }}
       >
         <SceneLighting />
-        {world ? (
+        {round ? (
           <Simulation
-            key={world.arena.id + (result?.challenge.id ?? "")}
-            world={world}
+            key={round.challenge.id + roundIndex}
+            round={round}
             input={input}
             snapshotRef={snapshotRef}
+            rivalUrl={rivalUrl}
           />
         ) : null}
       </Canvas>
 
-      {loading ? <div className="loading">Designing a round…</div> : null}
-      {!loading && world && !locked && result ? (
-        <Briefing
-          result={result}
-          status={hud?.status ?? "running"}
-          difficulty={difficulty}
-          onNewRound={newRound}
+      {phase === "loading" ? <div className="loading">Designing a round…</div> : null}
+
+      {phase === "briefing" && challenge ? (
+        <Briefing challenge={challenge} roundNumber={roundIndex + 1} total={ROUNDS_PER_RUN} />
+      ) : null}
+
+      {phase === "roundOver" && hud?.result ? (
+        <RoundOver
+          title={challenge?.challenge.title ?? "Round"}
+          result={hud.result}
+          roundNumber={roundIndex + 1}
+          onNext={() => loadRound(roundIndex + 1)}
+          onRetry={() => {
+            round?.restart();
+            setHistory((prior) => prior.slice(0, -1));
+            setPhase("briefing");
+          }}
         />
       ) : null}
-      {world ? <GravityBanner snapshot={hud} /> : null}
-      {world ? <GameHud snapshot={hud} /> : null}
+
+      {phase === "runOver" ? <RunOver history={history} onRestart={startRun} /> : null}
+
+      {round && !overlayOpen ? <GravityBanner snapshot={hud} /> : null}
+      {round ? <GameHud snapshot={hud} roundNumber={roundIndex + 1} total={ROUNDS_PER_RUN} /> : null}
     </div>
   );
 }
@@ -175,80 +225,149 @@ function SceneLighting() {
 }
 
 interface SimulationProps {
-  world: GameWorld;
+  round: Round;
   input: InputHandle;
-  snapshotRef: React.RefObject<GameSnapshot | null>;
+  snapshotRef: React.RefObject<RoundSnapshot | null>;
+  rivalUrl: string;
 }
 
-function Simulation({ world, input, snapshotRef }: SimulationProps) {
+function Simulation({ round, input, snapshotRef, rivalUrl }: SimulationProps) {
   const { camera, scene } = useThree();
   const playerRef = useRef<THREE.Group>(null);
+  const rivalRefs = useRef<(THREE.Group | null)[]>([]);
   const locomotionRef = useRef<LocomotionState>("idle");
   const upSignRef = useRef(1);
-  const [thirdPerson, setThirdPerson] = useState(world.camera.mode === "third");
+  const rivalLocomotion = useRef<LocomotionState[]>([]);
+  const phantomRef = useRef<string[]>([]);
+  const rivalUp = useRef<number[]>([]);
+  const [thirdPerson, setThirdPerson] = useState(round.world.camera.mode === "third");
+
+  const rivalCount = round.snapshot().opponents.length;
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
-    (window as unknown as Record<string, unknown>)["__paradox"] = { scene, camera, world };
+    (window as unknown as Record<string, unknown>)["__paradox"] = { scene, camera, round };
     return () => {
       delete (window as unknown as Record<string, unknown>)["__paradox"];
     };
-  }, [scene, camera, world]);
+  }, [scene, camera, round]);
 
   useFrame((_, delta) => {
     const raw = input.consume();
 
     if (input.consumePressed("toggleCamera")) {
-      setThirdPerson(world.camera.toggleMode() === "third");
+      setThirdPerson(round.world.camera.toggleMode() === "third");
     }
     if (input.consumePressed("restart")) {
-      world.restart();
+      round.restart();
     }
 
-    world.update(
+    round.update(
       { forward: raw.forward, right: raw.right, jump: raw.jump, sprint: raw.sprint },
       { deltaYaw: raw.deltaYaw, deltaPitch: raw.deltaPitch },
       delta,
     );
 
-    const snapshot = world.snapshot();
+    const snapshot = round.snapshot();
     snapshotRef.current = snapshot;
+    const game = snapshot.game;
 
-    const { eye, target } = snapshot.camera;
+    const { eye, target } = game.camera;
     camera.position.set(eye.x, eye.y, eye.z);
     // Roll the view with gravity, so standing on the ceiling does not look like standing
     // on the floor with the world drawn wrong.
-    camera.up.set(0, snapshot.rules.upSign, 0);
+    camera.up.set(0, game.rules.upSign, 0);
     camera.lookAt(target.x, target.y, target.z);
 
     const group = playerRef.current;
     if (group) {
-      const p = snapshot.player.position;
-      group.position.set(p.x, p.y - FOOT_DROP * snapshot.rules.upSign, p.z);
-      group.rotation.y = snapshot.player.facing;
+      const p = game.player.position;
+      group.position.set(p.x, p.y - FOOT_DROP * game.rules.upSign, p.z);
+      group.rotation.y = game.player.facing;
     }
-    locomotionRef.current = snapshot.player.locomotion;
-    upSignRef.current = snapshot.rules.upSign;
+    locomotionRef.current = game.player.locomotion;
+    upSignRef.current = game.rules.upSign;
+    phantomRef.current = game.rules.phantom;
+
+    snapshot.opponents.forEach((rival, index) => {
+      const rivalGroup = rivalRefs.current[index];
+      if (rivalGroup) {
+        rivalGroup.position.set(
+          rival.position.x,
+          rival.position.y - FOOT_DROP * rival.upSign,
+          rival.position.z,
+        );
+        rivalGroup.rotation.y = rival.facing;
+      }
+      rivalLocomotion.current[index] = rival.locomotion;
+      rivalUp.current[index] = rival.upSign;
+    });
   });
 
   return (
     // useGLTF suspends while the assets stream in. Without a boundary inside the Canvas
     // the whole subtree unwinds and the frame loop above never gets to run.
     <Suspense fallback={null}>
-      <ArenaView arena={world.arena} snapshotRef={snapshotRef} />
+      <ArenaView arena={round.world.arena} phantomRef={phantomRef} />
       <PlayerView
         ref={playerRef}
         locomotionRef={locomotionRef}
         upSignRef={upSignRef}
         visible={thirdPerson}
       />
+      {Array.from({ length: rivalCount }, (_, index) => (
+        <RivalView
+          key={index}
+          index={index}
+          url={rivalUrl}
+          refs={rivalRefs}
+          locomotion={rivalLocomotion}
+          up={rivalUp}
+        />
+      ))}
     </Suspense>
   );
 }
 
+/** One rival. Split out so each gets its own stable refs into the shared arrays. */
+function RivalView({
+  index,
+  url,
+  refs,
+  locomotion,
+  up,
+}: {
+  index: number;
+  url: string;
+  refs: React.RefObject<(THREE.Group | null)[]>;
+  locomotion: React.RefObject<LocomotionState[]>;
+  up: React.RefObject<number[]>;
+}) {
+  const locoRef = useRef<LocomotionState>("idle");
+  const upRef = useRef(1);
+
+  useFrame(() => {
+    locoRef.current = locomotion.current?.[index] ?? "idle";
+    upRef.current = up.current?.[index] ?? 1;
+  });
+
+  return (
+    <PlayerView
+      ref={(group) => {
+        if (refs.current) refs.current[index] = group;
+      }}
+      locomotionRef={locoRef}
+      upSignRef={upRef}
+      visible
+      url={url}
+      tint={RIVAL_TINTS[index % RIVAL_TINTS.length] ?? "#ff5f6d"}
+    />
+  );
+}
+
 /** The countdown before gravity flips. Impossible to miss on purpose. */
-function GravityBanner({ snapshot }: { snapshot: GameSnapshot | null }) {
-  const warning = snapshot?.rules.warning;
+function GravityBanner({ snapshot }: { snapshot: RoundSnapshot | null }) {
+  const warning = snapshot?.game.rules.warning;
   if (!warning) return null;
   return (
     <div className="gravity-banner">
@@ -259,19 +378,15 @@ function GravityBanner({ snapshot }: { snapshot: GameSnapshot | null }) {
 }
 
 function Briefing({
-  result,
-  status,
-  difficulty,
-  onNewRound,
+  challenge,
+  roundNumber,
+  total,
 }: {
-  result: ChallengeResult;
-  status: string;
-  difficulty: 1 | 2 | 3;
-  onNewRound: (level: 1 | 2 | 3) => void;
+  challenge: ChallengeResult;
+  roundNumber: number;
+  total: number;
 }) {
-  const { challenge, source, probe, note } = result;
-  const heading =
-    status === "won" ? "Arena cleared" : status === "lost" ? "Eliminated" : challenge.title;
+  const { challenge: config, source, probe, note } = challenge;
 
   return (
     <div className="overlay">
@@ -279,15 +394,26 @@ function Briefing({
         <span className={`source-badge ${source}`}>
           {source === "generated" ? "AI-designed round" : "built-in round"}
         </span>
-        <h2>{heading}</h2>
-        <p>{challenge.description}</p>
+        <div className="round-counter">
+          Round {roundNumber} of {total}
+        </div>
+        <h2>{config.title}</h2>
+        <p>{config.description}</p>
 
         <div className="challenge-meta">
-          <span>difficulty {challenge.difficulty}</span>
+          <span>difficulty {config.difficulty}</span>
           <span>·</span>
-          <span>{challenge.durationSeconds}s</span>
+          <span>{config.durationSeconds}s</span>
           <span>·</span>
-          <span>{challenge.objective.type === "REACH_EXIT" ? "reach the exit" : "survive"}</span>
+          <span>{config.objective.type === "REACH_EXIT" ? "reach the exit" : "survive"}</span>
+          {config.opponents.count > 0 ? (
+            <>
+              <span>·</span>
+              <span>
+                {config.opponents.count} rival{config.opponents.count > 1 ? "s" : ""}
+              </span>
+            </>
+          ) : null}
         </div>
 
         {/* Say exactly what the verification does and does not mean. */}
@@ -314,31 +440,115 @@ function Briefing({
             <kbd>V</kbd> camera · <kbd>R</kbd> restart · <kbd>Esc</kbd> release
           </li>
         </ul>
+      </div>
+    </div>
+  );
+}
 
+function RoundOver({
+  title,
+  result,
+  roundNumber,
+  onNext,
+  onRetry,
+}: {
+  title: string;
+  result: RoundResult;
+  roundNumber: number;
+  onNext: () => void;
+  onRetry: () => void;
+}) {
+  const won = result.status === "won";
+  return (
+    <div className="overlay">
+      <div className="overlay-card">
+        <div className="round-counter">Round {roundNumber}</div>
+        <h2 className={won ? "won" : "lost"}>{won ? "Survived" : "Eliminated"}</h2>
+        <p>{title}</p>
+        <div className="challenge-meta">
+          <span>{result.seconds.toFixed(1)}s</span>
+          {result.totalContestants > 1 ? (
+            <>
+              <span>·</span>
+              <span>
+                placed {result.placement} of {result.totalContestants}
+              </span>
+            </>
+          ) : null}
+        </div>
         <div className="arena-pick" onClick={(event) => event.stopPropagation()}>
-          {([1, 2, 3] as const).map((level) => (
-            <button
-              key={level}
-              className="clip"
-              aria-pressed={level === difficulty}
-              onClick={() => onNewRound(level)}
-            >
-              new round · {level}
-            </button>
-          ))}
+          <button className="clip" onClick={onRetry}>
+            retry round
+          </button>
+          <button className="clip primary" onClick={onNext}>
+            next round
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function GameHud({ snapshot }: { snapshot: GameSnapshot | null }) {
+function RunOver({ history, onRestart }: { history: CompletedRound[]; onRestart: () => void }) {
+  const survived = history.filter((entry) => entry.result.status === "won").length;
+  const total = history.reduce((sum, entry) => sum + entry.result.seconds, 0);
+
+  return (
+    <div className="overlay">
+      <div className="overlay-card">
+        <div className="round-counter">Run complete</div>
+        <h2 className={survived === history.length ? "won" : ""}>
+          {survived} of {history.length} survived
+        </h2>
+        <ul className="run-summary">
+          {history.map((entry, index) => (
+            <li key={index}>
+              <span className="round-name">
+                {index + 1}. {entry.title}
+              </span>
+              <span className={entry.result.status === "won" ? "ok" : "bad"}>
+                {entry.result.status === "won"
+                  ? `${entry.result.seconds.toFixed(1)}s`
+                  : "eliminated"}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <div className="challenge-meta">
+          <span>{total.toFixed(1)}s total</span>
+        </div>
+        <div className="arena-pick" onClick={(event) => event.stopPropagation()}>
+          <button className="clip primary" onClick={onRestart}>
+            new run
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GameHud({
+  snapshot,
+  roundNumber,
+  total,
+}: {
+  snapshot: RoundSnapshot | null;
+  roundNumber: number;
+  total: number;
+}) {
   if (!snapshot) return null;
-  const { player, status, elapsed, distanceToExit, camera, rules, timeRemaining } = snapshot;
+  const { game, opponents, livePlacement } = snapshot;
+  const { player, status, elapsed, distanceToExit, rules, timeRemaining } = game;
   const urgent = timeRemaining !== null && timeRemaining < 10;
 
   return (
     <div className="hud game-hud">
+      <div className="row">
+        <span className="k">round</span>
+        <span className="v">
+          {roundNumber} / {total}
+        </span>
+      </div>
       <div className="row">
         <span className="k">status</span>
         <span className={`v ${status === "won" ? "ok" : status === "lost" ? "bad" : ""}`}>
@@ -351,9 +561,17 @@ function GameHud({ snapshot }: { snapshot: GameSnapshot | null }) {
           {timeRemaining === null ? `${elapsed.toFixed(1)}s` : `${timeRemaining.toFixed(1)}s`}
         </span>
       </div>
+      {opponents.length > 0 ? (
+        <div className="row">
+          <span className="k">place</span>
+          <span className={`v ${livePlacement === 1 ? "ok" : "warn"}`}>
+            {livePlacement} of {opponents.length + 1}
+          </span>
+        </div>
+      ) : null}
       <div className="row">
-        <span className="k">speed</span>
-        <span className="v">{player.speed.toFixed(1)} m/s</span>
+        <span className="k">to exit</span>
+        <span className="v">{distanceToExit.toFixed(1)} m</span>
       </div>
       <div className="row">
         <span className="k">state</span>
@@ -361,10 +579,6 @@ function GameHud({ snapshot }: { snapshot: GameSnapshot | null }) {
           {player.locomotion}
           {player.grounded ? "" : " · airborne"}
         </span>
-      </div>
-      <div className="row">
-        <span className="k">to exit</span>
-        <span className="v">{distanceToExit.toFixed(1)} m</span>
       </div>
       <div className="row">
         <span className="k">gravity</span>
@@ -377,10 +591,6 @@ function GameHud({ snapshot }: { snapshot: GameSnapshot | null }) {
         <span className={`v ${rules.phantom.length > 0 ? "warn" : ""}`}>
           {rules.phantom.length > 0 ? rules.phantom.join(", ") : "none"}
         </span>
-      </div>
-      <div className="row">
-        <span className="k">camera</span>
-        <span className="v">{camera.mode === "third" ? "third-person" : "first-person"}</span>
       </div>
     </div>
   );

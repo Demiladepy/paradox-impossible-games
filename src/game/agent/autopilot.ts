@@ -27,8 +27,11 @@ const TAKEOFF_LEAD = 0.75;
 /** Considered "arrived" only when properly inside the footprint, not straddling the lip. */
 const ARRIVAL_MARGIN = -0.25;
 
-/** Steps of near-zero speed while trying to move before we assume something is in the way. */
-const STUCK_STEPS = 12;
+/** Grounded steps without closing on the target before we assume something is in the way. */
+const STUCK_STEPS = 14;
+
+/** Steps to wait after any jump before considering another "stuck" jump. */
+const JUMP_COOLDOWN = 34;
 
 /** Extra degrees beyond the cone's own hysteresis band when averting, for safety. */
 const AVERT_MARGIN_DEGREES = 13;
@@ -92,6 +95,8 @@ export class Autopilot {
   private averting = false;
   private blocked = false;
   private waiting = false;
+  /** Closest we have come to the current target, for progress-based stuck detection. */
+  private bestDistance = Number.POSITIVE_INFINITY;
 
   constructor(
     private readonly arena: ArenaDefinition,
@@ -141,7 +146,11 @@ export class Autopilot {
 
       const remaining = Math.hypot(exit.x - position.x, exit.z - position.z);
       if (remaining < 0.3) return { forward: 0, right: 0, jump: false, sprint: false };
-      return { ...this.inputsFor(toExit, yaw), jump: this.jumpIfStuck(snapshot), sprint: false };
+      return {
+        ...this.inputsFor(toExit, yaw),
+        jump: this.jumpIfStuck(snapshot, remaining),
+        sprint: false,
+      };
     }
 
     const target: Vec3 = { x: next.position.x, y: surfaceY(next), z: next.position.z };
@@ -202,7 +211,8 @@ export class Autopilot {
       this.step - this.lastJumpStep > 8 &&
       (distanceToEdge <= TAKEOFF_LEAD || (mustClimb && distanceToEdge <= TAKEOFF_LEAD + 1.4));
 
-    const jump = needsJump || this.jumpIfStuck(snapshot);
+    const distanceToTarget = Math.hypot(target.x - position.x, target.z - position.z);
+    const jump = needsJump || this.jumpIfStuck(snapshot, distanceToTarget);
     if (jump) this.lastJumpStep = this.step;
 
     return { ...this.inputsFor(toTarget, yaw), jump, sprint };
@@ -276,13 +286,24 @@ export class Autopilot {
    * moves. Rather than enumerate every ledge the route might meet, notice the lack of
    * progress and jump.
    */
-  private jumpIfStuck(snapshot: GameSnapshot): boolean {
+  private jumpIfStuck(snapshot: GameSnapshot, distanceToTarget: number): boolean {
     if (!snapshot.player.grounded) {
       this.stuckSteps = 0;
       return false;
     }
-    this.stuckSteps = snapshot.player.speed < 0.6 ? this.stuckSteps + 1 : 0;
-    if (this.stuckSteps >= STUCK_STEPS && this.step - this.lastJumpStep > 8) {
+
+    // Progress, not speed, is the thing that matters. Keying on speed produced a loop:
+    // land from a jump with no horizontal velocity, register as stuck, jump again, and
+    // never spend long enough on the ground to walk anywhere. A slow rival would hop on
+    // the spot two metres from the exit until the timer ran out.
+    if (distanceToTarget < this.bestDistance - 0.05) {
+      this.bestDistance = distanceToTarget;
+      this.stuckSteps = 0;
+      return false;
+    }
+
+    this.stuckSteps++;
+    if (this.stuckSteps >= STUCK_STEPS && this.step - this.lastJumpStep > JUMP_COOLDOWN) {
       this.stuckSteps = 0;
       this.lastJumpStep = this.step;
       return true;
@@ -309,6 +330,7 @@ export class Autopilot {
       if (insideX && insideZ && standingOn) {
         this.index = i;
         this.stuckSteps = 0;
+        this.bestDistance = Number.POSITIVE_INFINITY;
         return;
       }
     }

@@ -60,8 +60,8 @@ export const ARENA_01: ArenaDefinition = {
   killPlaneY: -14,
   gravity: vec3(0, -22, 0),
 
-  // Sits just above the exit pad surface (5.7).
-  exit: { id: "exit-01", position: vec3(0, 6.1, -37), radius: 1.6 },
+  // Sits just above the exit pad surface (3.7).
+  exit: { id: "exit-01", position: vec3(0, 4.1, -37), radius: 1.6 },
 
   defaultRules: [FALSE_FLOOR_RULE],
 
@@ -75,7 +75,18 @@ export const ARENA_01: ArenaDefinition = {
     "rise-01",
     "rise-02",
     "rise-03",
+    "rise-04",
     "exit-pad",
+  ],
+
+  // Scenery, drawn and never collided with. The pillars give the void a sense of scale
+  // and the obelisk makes the objective readable from the start pad.
+  decor: [
+    { asset: "exit-obelisk", position: vec3(0, 3.7, -38.6), height: 5.2 },
+    { asset: "arena-pillar", position: vec3(-9.5, -6, -6), height: 16, rotationY: 0.4 },
+    { asset: "arena-pillar", position: vec3(10.5, -8, -18), height: 20, rotationY: -0.7 },
+    { asset: "arena-pillar", position: vec3(-11, -7, -30), height: 18, rotationY: 1.1 },
+    { asset: "arena-pillar", position: vec3(9, -5, -34), height: 14, rotationY: -0.2 },
   ],
 
   platforms: [
@@ -102,15 +113,17 @@ export const ARENA_01: ArenaDefinition = {
 
     // The ascent to the exit.
     //
-    // Deliberately a staircase with overlapping footprints, not a series of leaps. The
-    // gap run above is where the platforming challenge lives; PARADOX is meant to be hard
-    // because the rules are strange, not because the geometry demands precision. Even
-    // rises of 1.0 m with zero gap, so each step is one unambiguous hop.
-    platform("rise-01", [-1.8, 2.2, -30.0], [3.6, 1, 3.6], "solid", "platform-slab"),
-    platform("rise-02", [1.4, 3.2, -32.4], [3.4, 1, 3.4], "solid", "platform-slab"),
-    platform("rise-03", [-1.0, 4.2, -34.6], [3.4, 1, 3.4], "solid", "platform-slab"),
+    // Every rise is 0.40 m — just under the character controller's 0.45 m autostep — with
+    // zero gaps, so the whole staircase is *walked*, not jumped. The previous version used
+    // 1.0 m rises, which meant jumping into a vertical face: it worked at full speed and
+    // failed for anyone slower, which a handicapped rival exposed immediately. A step you
+    // have to jump into is a step some players will never clear.
+    platform("rise-01", [-1.6, 1.6, -30.0], [3.6, 1, 3.6], "solid", "platform-slab"),
+    platform("rise-02", [0.9, 2.0, -31.8], [3.4, 1, 3.4], "solid", "platform-slab"),
+    platform("rise-03", [-0.9, 2.4, -33.6], [3.4, 1, 3.4], "solid", "platform-slab"),
+    platform("rise-04", [0.6, 2.8, -35.2], [3.4, 1, 3.4], "solid", "platform-slab"),
 
     // Exit platform.
-    platform("exit-pad", [0, 5.2, -37], [5, 1, 5], "solid", "platform-slab"),
+    platform("exit-pad", [0, 3.2, -37], [5, 1, 5], "solid", "platform-slab"),
   ],
 };

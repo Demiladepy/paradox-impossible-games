@@ -7,6 +7,7 @@ import {
   PlayerController,
   type LocomotionState,
   type PlayerInput,
+  type PlayerTuning,
 } from "./player/controller.ts";
 import { initPhysics, PhysicsWorld } from "./physics/world.ts";
 import { platformUnderFeet } from "./arena/support.ts";
@@ -96,6 +97,8 @@ export interface GameWorldOptions {
   objective?: ChallengeObjective;
   /** Round length. Omitted means untimed, which is what the traversal tests use. */
   durationSeconds?: number;
+  /** Movement tuning. Opponents run slightly handicapped versions of the player's. */
+  tuning?: PlayerTuning;
 }
 
 export class GameWorld {
@@ -133,7 +136,7 @@ export class GameWorld {
       });
     }
 
-    this.player = new PlayerController(arena.spawn, arena.spawnYaw);
+    this.player = new PlayerController(arena.spawn, arena.spawnYaw, options.tuning);
     this.capsuleHalf = this.player.tuning.halfHeight + this.player.tuning.radius;
     this.physics.addCharacter({
       position: arena.spawn,
@@ -204,7 +207,8 @@ export class GameWorld {
     return this.ruleReport;
   }
 
-  update(input: PlayerInput, look: LookInput, deltaSeconds: number): void {
+  /** Returns how many fixed steps ran, so anything simulated alongside can keep lockstep. */
+  update(input: PlayerInput, look: LookInput, deltaSeconds: number): number {
     if (look.deltaYaw !== 0 || look.deltaPitch !== 0) {
       this.camera.look(look.deltaYaw, look.deltaPitch);
     }
@@ -224,6 +228,7 @@ export class GameWorld {
     }
 
     this.camera.update(this.player.position, Math.max(deltaSeconds, 1e-4));
+    return steps;
   }
 
   private refreshRuleViews(): void {

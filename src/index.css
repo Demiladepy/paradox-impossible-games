@@ -486,3 +486,58 @@ kbd {
   line-height: 1.6;
   color: var(--warn);
 }
+
+/* ---------- run progression ---------- */
+
+.round-counter {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.overlay-card h2.won {
+  color: var(--accent);
+}
+
+.overlay-card h2.lost {
+  color: var(--bad);
+}
+
+.clip.primary {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.run-summary {
+  list-style: none;
+  margin: 18px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.run-summary li {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel-2);
+}
+
+.run-summary .round-name {
+  color: var(--text);
+}
+
+.run-summary .ok {
+  color: var(--accent);
+}
+
+.run-summary .bad {
+  color: var(--bad);
+}

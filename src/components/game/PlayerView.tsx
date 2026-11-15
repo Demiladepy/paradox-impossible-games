@@ -15,7 +15,8 @@ import { CLIP_FOR_STATE } from "../../game/player/animation.ts";
  * wrong, the wrong animation would play here.
  */
 
-const CONTESTANT_URL = "/assets/generated/contestant-01-anim.glb";
+export const CONTESTANT_URL = "/assets/generated/contestant-01-anim.glb";
+export const RIVAL_URL = "/assets/generated/rival-01-anim.glb";
 
 /** Height in metres to normalise the generated model to — Lux3D's own scale varies (D-008). */
 const TARGET_HEIGHT = 1.78;
@@ -29,14 +30,18 @@ interface PlayerViewProps {
   /** +1 normal, -1 when gravity has inverted and the player stands on the ceiling. */
   upSignRef: React.RefObject<number>;
   visible: boolean;
+  /** Which generated character to wear. Rivals use a different one where it exists. */
+  url?: string;
+  /** Emissive wash, so rivals read as rivals at a distance. */
+  tint?: string;
 }
 
 export const PlayerView = forwardRef<THREE.Group, PlayerViewProps>(function PlayerView(
-  { locomotionRef, upSignRef, visible },
+  { locomotionRef, upSignRef, visible, url = CONTESTANT_URL, tint },
   ref,
 ) {
   const inner = useRef<THREE.Group>(null);
-  const { scene, animations } = useGLTF(CONTESTANT_URL);
+  const { scene, animations } = useGLTF(url);
 
   const model = useMemo(() => cloneSkinned(scene) as THREE.Group, [scene]);
 
@@ -57,9 +62,28 @@ export const PlayerView = forwardRef<THREE.Group, PlayerViewProps>(function Play
       if (child instanceof THREE.Mesh) {
         child.castShadow = true;
         child.frustumCulled = false; // skinned bounds go stale during animation
+
+        // Rivals get an emissive wash rather than a replaced material, so whatever Lux3D
+        // generated still shows through — a flat colour would throw away the asset.
+        //
+        // The clone matters: SkeletonUtils.clone copies the scene graph but every mesh
+        // still points at the *same* material instance, so tinting a rival turned the
+        // player red too.
+        if (tint) {
+          const source = Array.isArray(child.material) ? child.material : [child.material];
+          const tinted = source.map((material) => {
+            const copy = material.clone();
+            if (copy instanceof THREE.MeshStandardMaterial) {
+              copy.emissive = new THREE.Color(tint);
+              copy.emissiveIntensity = 0.5;
+            }
+            return copy;
+          });
+          child.material = Array.isArray(child.material) ? tinted : tinted[0]!;
+        }
       }
     });
-  }, [model]);
+  }, [model, tint]);
 
   // Report which clips were actually found, once. If a name is missing the model will
   // stand still, and silence would make that look like a physics bug rather than a

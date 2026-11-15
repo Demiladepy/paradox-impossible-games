@@ -37,7 +37,7 @@ export const FALLBACK_CHALLENGES: readonly ChallengeConfig[] = [
         trigger: { type: "PLAYER_CAMERA_DIRECTION" },
       },
     ],
-    opponents: { count: 0, difficulty: "EASY" },
+    opponents: { count: 1, difficulty: "EASY" },
   },
 
   {
@@ -63,6 +63,8 @@ export const FALLBACK_CHALLENGES: readonly ChallengeConfig[] = [
         trigger: { type: "TIMER" },
       },
     ],
+    // No rival in the gravity round: a contestant who falls out of the world mid-flip
+    // reads as a bug rather than a race.
     opponents: { count: 0, difficulty: "EASY" },
   },
 
@@ -96,7 +98,7 @@ export const FALLBACK_CHALLENGES: readonly ChallengeConfig[] = [
         trigger: { type: "TIMER" },
       },
     ],
-    opponents: { count: 0, difficulty: "EASY" },
+    opponents: { count: 2, difficulty: "NORMAL" },
   },
 ];
 

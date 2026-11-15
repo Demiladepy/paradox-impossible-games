@@ -60,6 +60,12 @@ export const ARENA_02: ArenaDefinition = {
   // You cross on the ceiling. Reachability analysis does not apply to this arena.
   route: ["floor-start", "floor-mid", "floor-exit"],
 
+  decor: [
+    { asset: "exit-obelisk", position: vec3(0, 0.5, -33.5), height: 4.6 },
+    { asset: "arena-pillar", position: vec3(-9, 0, -2), height: 12, rotationY: 0.5 },
+    { asset: "arena-pillar", position: vec3(9, 0, -20), height: 12, rotationY: -0.6 },
+  ],
+
   platforms: [
     // Ground level: three islands separated by gaps far wider than a jump.
     platform("floor-start", [0, 0, 6], [9, 1, 9], "platform-slab"),

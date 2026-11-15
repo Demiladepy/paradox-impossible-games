@@ -147,6 +147,9 @@ export function getTask(taskId: number): Promise<TaskResult> {
   return get<TaskResult>("/lux3d/v1/generate/task/get", { taskid: String(taskId) });
 }
 
+/** Consecutive poll failures tolerated before giving up on a running task. */
+const POLL_ERROR_TOLERANCE = 8;
+
 export interface PollOptions {
   /** Docs recommend 10-15s. */
   intervalMs?: number;
@@ -163,8 +166,29 @@ export async function pollTask(taskId: number, options: PollOptions = {}): Promi
   const timeoutMs = options.timeoutMs ?? 20 * 60_000;
   const startedAt = Date.now();
 
+  let consecutiveErrors = 0;
+
   for (;;) {
-    const task = await getTask(taskId);
+    let task: TaskResult;
+    try {
+      task = await getTask(taskId);
+      consecutiveErrors = 0;
+    } catch (error) {
+      // A transient network blip must not throw away a generation that is minutes in and
+      // has already been paid for. Only give up after several consecutive failures, and
+      // never on a plain fetch error — the task is still running on their side.
+      consecutiveErrors++;
+      const fatal = error instanceof LuxApiError && error.code === "MISSING_API_KEY";
+      if (fatal || consecutiveErrors >= POLL_ERROR_TOLERANCE) throw error;
+
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(
+        `[lux3d] poll ${consecutiveErrors}/${POLL_ERROR_TOLERANCE} failed (${message}); retrying`,
+      );
+      await sleep(intervalMs);
+      continue;
+    }
+
     const elapsed = Date.now() - startedAt;
     options.onTick?.(task, elapsed);
 

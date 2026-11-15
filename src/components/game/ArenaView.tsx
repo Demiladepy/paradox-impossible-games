@@ -2,8 +2,7 @@ import { useCallback, useMemo, useRef } from "react";
 import { Clone, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
-import type { ArenaDefinition, PlatformDef } from "../../game/arena/types.ts";
-import type { GameSnapshot } from "../../game/GameWorld.ts";
+import type { ArenaDefinition, DecorDef, PlatformDef } from "../../game/arena/types.ts";
 
 /**
  * Draws the arena, and shows what the rules are doing to it.
@@ -19,12 +18,25 @@ import type { GameSnapshot } from "../../game/GameWorld.ts";
 
 const SLAB_URL = "/assets/generated/platform-slab.glb";
 
+/** Scenery assets, all Lux3D-generated, keyed by their manifest name. */
+const DECOR_URLS: Record<string, string> = {
+  "exit-obelisk": "/assets/generated/exit-obelisk.glb",
+  "arena-pillar": "/assets/generated/arena-pillar.glb",
+};
+
 interface ArenaViewProps {
   arena: ArenaDefinition;
-  snapshotRef: React.RefObject<GameSnapshot | null>;
+  /**
+   * Ids of platforms with no collision right now, updated every frame.
+   *
+   * A bare list rather than the whole snapshot: this component only cares which platforms
+   * are currently unmade, and taking the narrow dependency keeps it working whatever the
+   * simulation wraps itself in next.
+   */
+  phantomRef: React.RefObject<string[]>;
 }
 
-export function ArenaView({ arena, snapshotRef }: ArenaViewProps) {
+export function ArenaView({ arena, phantomRef }: ArenaViewProps) {
   const { scene: slab } = useGLTF(SLAB_URL);
 
   /**
@@ -69,9 +81,8 @@ export function ArenaView({ arena, snapshotRef }: ArenaViewProps) {
   }, []);
 
   useFrame(() => {
-    const snapshot = snapshotRef.current;
-    if (!snapshot) return;
-    const phantom = snapshot.rules.phantom;
+    const phantom = phantomRef.current;
+    if (!phantom) return;
 
     for (const [id, object] of solidRefs.current) {
       object.visible = !phantom.includes(id);
@@ -92,6 +103,7 @@ export function ArenaView({ arena, snapshotRef }: ArenaViewProps) {
           registerGhost={registerGhost}
         />
       ))}
+      <Decor arena={arena} />
       <ExitMarker arena={arena} />
     </group>
   );
@@ -146,6 +158,72 @@ function Platform({ platform, slab, registerSolid, registerGhost }: PlatformProp
           opacity={conditional ? 0.95 : 0.8}
         />
       </lineSegments>
+    </group>
+  );
+}
+
+/**
+ * Lux3D scenery.
+ *
+ * Each asset is loaded once and cloned per placement, then normalised to the height the
+ * arena asked for — generated models arrive at whatever scale Lux3D predicted (D-008), so
+ * nothing here can assume a unit size.
+ */
+function Decor({ arena }: { arena: ArenaDefinition }) {
+  const items = arena.decor ?? [];
+  const names = [...new Set(items.map((item) => item.asset))];
+
+  return (
+    <group>
+      {names.map((name) => (
+        <DecorGroup
+          key={name}
+          url={DECOR_URLS[name] ?? ""}
+          placements={items.filter((item) => item.asset === name)}
+        />
+      ))}
+    </group>
+  );
+}
+
+function DecorGroup({ url, placements }: { url: string; placements: DecorDef[] }) {
+  const { scene } = useGLTF(url);
+
+  const normalised = useMemo(() => {
+    const source = scene.clone(true);
+    const box = new THREE.Box3().setFromObject(source);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const height = size.y || 1;
+
+    const wrapper = new THREE.Group();
+    // Sit the model on its own base, so a placement's y is where it stands.
+    source.position.set(0, -box.min.y, 0);
+    const inner = new THREE.Group();
+    inner.add(source);
+    inner.scale.setScalar(1 / height);
+    wrapper.add(inner);
+
+    wrapper.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return wrapper;
+  }, [scene]);
+
+  return (
+    <group>
+      {placements.map((item, index) => (
+        <Clone
+          key={`${item.asset}-${index}`}
+          object={normalised}
+          position={[item.position.x, item.position.y, item.position.z]}
+          rotation={[0, item.rotationY ?? 0, 0]}
+          scale={item.height}
+        />
+      ))}
     </group>
   );
 }

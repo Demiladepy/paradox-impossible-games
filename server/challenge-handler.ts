@@ -80,7 +80,7 @@ SHAPE:
   "durationSeconds": integer ${MIN_DURATION}–${MAX_DURATION},
   "difficulty": 1 | 2 | 3,
   "rules": [ 1–4 rules ],
-  "opponents": { "count": 0, "difficulty": "EASY" }
+  "opponents": { "count": 0-2, "difficulty": "EASY" | "NORMAL" }
 }
 
 HARD CONSTRAINTS — a challenge breaking any of these is rejected:
@@ -94,7 +94,10 @@ DESIGN GUIDANCE:
 - The round should be legible. A player must be able to work out the rule by experimenting, in one or two deaths.
 - The description should hint at the mechanic without explaining it outright.
 - Difficulty 1: one rule, generous timer. Difficulty 3: two or three interacting rules.
-- Give the player time to think: these timers are for tension, not for speedrunning.`;
+- Give the player time to think: these timers are for tension, not for speedrunning.
+- Rivals race the player through their own copy of the arena. One EASY rival suits
+  difficulty 1-2; two NORMAL rivals suit difficulty 3. Use 0 rivals in a gravity round,
+  where a rival falling out of the world reads as a bug rather than a race.`;
 }
 
 function userPrompt(request: GenerateRequest, previousFailure?: string): string {

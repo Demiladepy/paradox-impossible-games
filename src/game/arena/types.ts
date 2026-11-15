@@ -27,6 +27,22 @@ export interface PlatformDef {
   visual?: string;
 }
 
+/**
+ * Scenery. Drawn, never collided with.
+ *
+ * Decor exists so generated assets can dress an arena without becoming part of its
+ * physics — a Lux3D mesh is far too dense to collide against, and the moment scenery can
+ * block a player it stops being scenery and becomes level design that nothing validates.
+ */
+export interface DecorDef {
+  /** Manifest entry name of the generated asset. */
+  asset: string;
+  position: Vec3;
+  /** Height in metres to scale the asset to. */
+  height: number;
+  rotationY?: number;
+}
+
 export interface ExitDef {
   id: string;
   position: Vec3;
@@ -42,6 +58,8 @@ export interface ArenaDefinition {
   spawnYaw: number;
   exit: ExitDef;
   platforms: PlatformDef[];
+  /** Non-colliding scenery. */
+  decor?: DecorDef[];
   /**
    * The intended path from spawn to exit, as platform ids. Reachability analysis and the
    * Milestone 3 solvability probe both walk this, so it is data rather than something a

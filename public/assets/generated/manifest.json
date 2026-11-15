@@ -1,6 +1,19 @@
 {
-  "updatedAt": "2026-11-12T21:40:51.138Z",
+  "updatedAt": "2026-11-15T13:11:04.681Z",
   "entries": [
+    {
+      "name": "arena-pillar",
+      "kind": "prop",
+      "file": "/assets/generated/arena-pillar.glb",
+      "prompt": "a weathered industrial sci-fi support pillar column of dark metal and concrete with glowing amber warning stripes, arena scenery, game asset",
+      "style": "cyberpunk",
+      "version": "G1-Turbo",
+      "faceCount": 16000,
+      "taskId": 8015029,
+      "source": "text-to-3d",
+      "createdAt": "2026-11-15T13:11:04.655Z",
+      "bytes": 10932932
+    },
     {
       "name": "contestant-01-anim",
       "kind": "character-animations",
@@ -39,6 +52,19 @@
       "bytes": 21297912,
       "derivedFromTaskId": 6929612,
       "notes": "Rigged character: model + materials + skeleton + skin."
+    },
+    {
+      "name": "exit-obelisk",
+      "kind": "prop",
+      "file": "/assets/generated/exit-obelisk.glb",
+      "prompt": "a tall broken obelisk monument of fractured dark stone with glowing cyan energy running through its cracks, sci-fi arena marker, game asset",
+      "style": "cyberpunk",
+      "version": "G1-Turbo",
+      "faceCount": 18000,
+      "taskId": 8015028,
+      "source": "text-to-3d",
+      "createdAt": "2026-11-15T13:10:06.632Z",
+      "bytes": 10916424
     },
     {
       "name": "platform-slab",
