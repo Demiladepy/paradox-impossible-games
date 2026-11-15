@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -14,7 +14,10 @@ import { CLIP_FOR_STATE, REQUIRED_CLIPS, RESERVED_CLIPS } from "./animation.ts";
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
-const CONTESTANT = resolve(here, "../../../public/assets/generated/contestant-01-anim.glb");
+const GENERATED = resolve(here, "../../../public/assets/generated");
+
+/** Every character the game can put on screen must satisfy the same contract. */
+const CHARACTERS = ["contestant-01-anim", "rival-01-anim"];
 
 function readClipNames(path: string): string[] {
   const buffer = readFileSync(path);
@@ -36,25 +39,32 @@ function readClipNames(path: string): string[] {
   throw new Error("GLB has no JSON chunk");
 }
 
-describe("contestant animation contract", () => {
-  const names = readClipNames(CONTESTANT);
+describe.each(CHARACTERS)("%s animation contract", (name) => {
+  const path = resolve(GENERATED, `${name}.glb`);
+  const names = existsSync(path) ? readClipNames(path) : null;
+
+  it("exists on disk", () => {
+    // A missing rival is survivable — the game falls back to the player's model — but it
+    // should be a visible gap, not a silently skipped test.
+    expect(names, `${name}.glb has not been generated`).not.toBeNull();
+  });
 
   it("contains every clip the game asks for by name", () => {
-    expect(names).toEqual(expect.arrayContaining([...REQUIRED_CLIPS]));
+    expect(names ?? []).toEqual(expect.arrayContaining([...REQUIRED_CLIPS]));
   });
 
   it("still carries the clips reserved for later rounds", () => {
-    expect(names).toEqual(expect.arrayContaining([...RESERVED_CLIPS]));
+    expect(names ?? []).toEqual(expect.arrayContaining([...RESERVED_CLIPS]));
   });
 
   it("has no leftover positional aliases from Lux3D", () => {
-    const aliases = names.filter((name) => /^animation_\d+$/.test(name));
+    const aliases = (names ?? []).filter((clip) => /^animation_\d+$/.test(clip));
     expect(aliases).toEqual([]);
   });
 
   it("maps every locomotion state to a clip that exists", () => {
     for (const [state, clip] of Object.entries(CLIP_FOR_STATE)) {
-      expect(names, `locomotion state "${state}" wants clip "${clip}"`).toContain(clip);
+      expect(names ?? [], `locomotion state "${state}" wants clip "${clip}"`).toContain(clip);
     }
   });
 });

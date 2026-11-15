@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-15T13:26:51.439Z",
+  "updatedAt": "2026-11-15T13:28:07.857Z",
   "entries": [
     {
       "name": "arena-pillar",
@@ -83,6 +83,30 @@
       "notes": "Optimised: textures <=1024px WebP, was 12.95 MB."
     },
     {
+      "name": "rival-01-anim",
+      "kind": "character-animations",
+      "file": "/assets/generated/rival-01-anim.glb",
+      "prompt": "",
+      "taskId": 8015750,
+      "source": "retarget",
+      "createdAt": "2026-11-15T13:27:25.427Z",
+      "bytes": 1819140,
+      "animations": [
+        "Idle_Loop",
+        "Walk_Loop",
+        "Jog_Fwd_Loop",
+        "Sprint_Loop",
+        "Jump_Start",
+        "Jump_Loop",
+        "Jump_Land",
+        "Roll",
+        "Hit_Knockback",
+        "Death01"
+      ],
+      "derivedFromTaskId": 8015470,
+      "notes": "Combined, in-place clips retargeted onto the rigged character. Optimised: textures <=1024px WebP, was 18.24 MB."
+    },
+    {
       "name": "rival-01-rigged",
       "kind": "character",
       "file": "/assets/generated/rival-01-rigged.glb",
@@ -93,9 +117,9 @@
       "taskId": 8015470,
       "source": "rig",
       "createdAt": "2026-11-15T13:26:51.409Z",
-      "bytes": 18423844,
+      "bytes": 1325796,
       "derivedFromTaskId": 8015374,
-      "notes": "Rigged character: model + materials + skeleton + skin."
+      "notes": "Rigged character: model + materials + skeleton + skin. Optimised: textures <=1024px WebP, was 17.57 MB."
     }
   ]
 }

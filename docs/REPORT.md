@@ -40,7 +40,7 @@ screen and a summary.
 | **Rule types implemented** | 3 (`CONDITIONAL_PLATFORM`, `GRAVITY_DIRECTION`, `OBJECT_STATE`) |
 | **Lux3D assets in gameplay** | 5 (platform slab, contestant, rival, obelisk, pillar) |
 | **Lux3D API calls** | text-to-3D, auto-rigging, animation retargeting, used in a chain |
-| **Automated tests** | 103, including a headless agent completing a full arena |
+| **Automated tests** | 109, including a headless agent completing a full arena |
 | **Runs offline** | Yes — the whole game plays with no network at all |
 
 ### The mechanics
@@ -87,15 +87,21 @@ GLB that drops straight into a `THREE.AnimationMixer`.
 Because the result URLs stay fetchable for two hours, each stage's output feeds the next
 **without uploading anything**.
 
+We ran the chain twice, and the second run is the more useful data point: the rival was
+generated with **`G1-Turbo` instead of `G1` — 116 s instead of 336 s — and auto-rigging
+accepted it just as readily**, delivering 10/10 clips again. For characters that will be
+seen at a distance, the fast model is enough, and it turns an eight-minute pipeline into a
+three-minute one.
+
 ### 3.2 Assets in the game
 
 | Asset | Lux3D task | Endpoint | Where you see it |
 | --- | --- | --- | --- |
 | `platform-slab` | `6929533` | text-to-3D `G1-Turbo`, 104s | Every platform in both arenas |
 | `contestant-01` | `6929612/848/908` | text-to-3D `G1` → rig → retarget | The character you control |
-| `rival-01` | text-to-3D `G1-Turbo` → rig → retarget | Your opponent |
-| `exit-obelisk` | text-to-3D `G1-Turbo`, 110s | Marks the exit in both arenas |
-| `arena-pillar` | text-to-3D `G1-Turbo`, 139s | Scenery framing the courses |
+| `rival-01` | `8015374/470/750` | text-to-3D `G1-Turbo` → rig → retarget | Your opponent |
+| `exit-obelisk` | `8015028` | text-to-3D `G1-Turbo`, 110s | Marks the exit in both arenas |
+| `arena-pillar` | `8015029` | text-to-3D `G1-Turbo`, 139s | Scenery framing the courses |
 
 Every asset is recorded in `public/assets/generated/manifest.json` with its prompt, task id,
 version, face count and date. **Every model in the game is traceable to the prompt that made
@@ -289,8 +295,6 @@ used raw Rapier instead of the React binding so that would be possible.
 - **Gravity inverts along Y only.** Arbitrary gravity directions would need the character
   controller re-based onto an arbitrary axis; not something to attempt days from a deadline.
 - **`SPATIAL_PORTAL` is unimplemented** and refused by name.
-- **Opponents share the player's character model** where a distinct rival asset is not
-  present, tinted to tell them apart.
 - The probe proves completion by *an agent*, not fairness for a human. Said on screen.
 
 ## 10. What we would do next
@@ -306,10 +310,10 @@ round, so the generated challenge changes how the world looks as well as how it 
 
 | | |
 | --- | --- |
-| Lux3D generations in the shipped game | 5 assets across 9 API tasks |
-| Asset payload | 75.08 MB → **6.89 MB** (−91%) |
+| Lux3D generations in the shipped game | 5 assets across 12 API tasks |
+| Asset payload | 110.89 MB → **9.89 MB** (−91%) |
 | Animation clips driving the contestants | 10, retargeted in-place |
-| Automated tests | **103**, all passing |
+| Automated tests | **109**, all passing |
 | Initial JS bundle | 381 kB gzipped (physics lazy-loaded) |
 | Rounds per run | 3 |
 | Works with no network | Yes |

@@ -32,7 +32,7 @@ export default function App() {
             Asset Lab
           </button>
         </div>
-        <span className="milestone">Milestone 1 · Arena 01</span>
+        <span className="milestone">AI-designed rounds · verified before you play</span>
       </nav>
 
       <div className="view">{view === "play" ? <GameScreen /> : <AssetLab />}</div>
