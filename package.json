@@ -16,9 +16,12 @@
     "inspect:asset": "node --import tsx scripts/lux3d/inspect.ts",
     "relabel:clips": "node --import tsx scripts/lux3d/relabel.ts",
     "optimize:asset": "node --import tsx scripts/lux3d/optimize.ts",
-    "analyze:arena": "node --import tsx scripts/analyze-arena.ts"
+    "analyze:arena": "node --import tsx scripts/analyze-arena.ts",
+    "probe:fallbacks": "node --import tsx scripts/probe-fallbacks.ts",
+    "probe:control": "node --import tsx scripts/probe-control.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@dimforge/rapier3d-compat": "^0.21.0",
     "@react-three/drei": "10.7.9",
     "@react-three/fiber": "9.8.2",

@@ -1,106 +1,111 @@
 # Build Status
 
-**Updated:** 2026-11-14 · **Milestones 0, 1, 2: COMPLETE** · Next: Milestone 3 (AI challenge
-generation and verification)
+**Updated:** 2026-11-15 · **Milestones 0–3: COMPLETE** · Next: Milestone 4 (opponent and
+progression) — or polish, given the remaining time
 
 ## Verified — actually run on this machine
 
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | passes, 0 errors |
-| `npm run test` | **71/71 passing** across 6 files |
-| `npm run build` | passes — main 1,278 kB (354 kB gzip) + lazy 4,335 kB rapier chunk |
-| `npm run analyze:arena` | 9/9 hops in Arena 01 clearable at walking speed |
+| `npm run test` | **94/94 passing** across 7 files |
+| `npm run build` | passes — main 1,374 kB (381 kB gzip) + lazy 4,335 kB rapier chunk |
+| `POST /api/challenge` | responds with a validated, probed challenge |
 
-## Milestone 2 exit condition — met
+## Milestone 3 exit condition — met
 
-> "At least two mechanics work reliably in the same scene."
+> "A generated challenge configuration can be loaded and played without manual code changes."
 
-Both work, separately and together, with 20 tests covering them.
+A round is now a `ChallengeConfig`: which arena, which rules, what winning means, how long.
+It arrives from `/api/challenge`, is turned into a `GameWorld`, and plays. The title card is
+rendered from the config, the timer comes from it, and the HUD shows the rules acting.
 
-### THE FALSE FLOOR — `CONDITIONAL_PLATFORM`
+### The validation pipeline
 
-Platforms stop existing while you look at them. Verified headless *and on screen*: with the
-player facing down the course, all four gap-run platforms render as outlines and the HUD
-reports `unmade: step-01, step-02, step-03, step-04`; turning 180° restores them
-(`phantom: []`).
+Four gates, cheapest first (D-018):
 
-Tested: unmakes on gaze · restores on looking away · **never unmakes the platform underfoot**
-· unmakes a platform observed from a different one · **does not chatter** (camera wobbling on
-the cone boundary for 3 s produces ≤2 transitions).
-
-### GRAVITY ZERO — `GRAVITY_DIRECTION`
-
-Gravity inverts on a schedule, after a countdown. Full cycle captured live in the browser:
-
-```
-t= 6.5  y=1.40  up=+1  "GRAVITY INVERTING"   on floor-start
-t= 7.9  y=7.60  up=-1                        on ceil-main
-t=12.1  y=7.60  up=-1  "GRAVITY RESTORING"   on ceil-main
-t=14.9  y=1.37  up=+1                        on floor-start
-```
-
-Tested: inverts on schedule and warns first · sends the player upward · lands them on the
-ceiling's underside rather than losing them · **kills a player caught over a gap when gravity
-restores** · holds a stable schedule over 30 s.
-
-### Both at once
-
-A scene running `CONDITIONAL_PLATFORM` and `GRAVITY_DIRECTION` together: both rules load,
-the gaze rule still functions after the gravity rule has changed the world.
-
-### Validation refuses bad rules — 8 tests
-
-Unknown target ids · targeting the exit (a trigger volume, no collider) · unimplemented rule
-types (`SPATIAL_PORTAL` is refused, not ignored) · unknown triggers · out-of-range numbers ·
-wrong parameter types · duplicate rule ids · contradictions (a gravity warning longer than its
-own interval). A rejected rule leaves the world completely untouched.
-
-This is the foundation of Milestone 3: when the AI proposes a challenge, this layer decides
-whether a player is let into it.
-
-## Decisions closed this milestone
-
-- **D-005 camera: third-person**, decided at its deadline. The False Floor needs a gaze you
-  can aim independently of your heading; gravity inversion needs to be legible on your own
-  body; and the Lux3D contestant staying on screen serves the 30% tooling criterion. Both
-  modes remain behind `CameraRig`, `V` toggles.
-- **D-015** rule modules parse before they apply, and loading is all-or-nothing.
-- **D-016** hysteresis and the supporting-platform exemption.
-- **D-017** gravity inverts along Y only, instantly, with a countdown; Arena 02's ceiling is
-  continuous so inverting is always survivable.
-
-## Arenas
-
-| Arena | Mechanic | Notes |
+| Gate | Catches | Tests |
 | --- | --- | --- |
-| `arena-01` "The Gauntlet" | THE FALSE FLOOR on the gap run | 12 platforms, 9/9 hops walkable |
-| `arena-02` "Inversion" | GRAVITY ZERO | floor islands too far to jump; you cross on the ceiling |
+| shape | zod `.strict()` — missing fields, bad types, **unexpected keys** (not silently dropped), timers out of range | 5 |
+| references | unknown arena, platform the arena does not contain, unimplemented rule type, objective pointing at the wrong exit | 4 |
+| sanity | contradictory gaze rules, two gravity schedules, gravity in an arena with no ceiling, duplicate rule ids | 4 |
+| solvability | **play it** — an agent attempts the objective in the real simulation | 5 |
 
-The briefing line on the title card is generated from the rules actually loaded, not hardcoded.
+Generation runs **server-side** and validates before replying, so the browser cannot be
+handed something unplayable. A rejection goes back to the model as a specific reason with
+one retry; after that the fallback pack is used and the UI says so.
 
-## Not yet verified
+### The probe plays the mechanics
 
-- Frame rate under load. The Browser pane runs as a background page and throttles, so **no
-  timing or performance number measured through it is trustworthy**. Needs a real window.
-- How the False Floor *feels* to play now that it is on by default in Arena 01. It is a hard
-  mechanic; whether it is hard in the good way is a question for a human.
-- Arena 02 has not been played start to finish by anyone. The autopilot cannot solve it —
-  crossing needs gravity timing, not jumps — so it is covered by rule tests, not an
-  end-to-end run.
+The agent reads the active rules: under THE FALSE FLOOR it averts its gaze and strafes,
+under OBJECT_STATE it waits for the floor to return, and it refuses to step into a gap no
+jump can clear. Every challenge is probed twice — once by an agent that knows the rules and
+once by one that does not:
+
+```
+The False Floor    aware=SOLVED  9.3s   naive=FAILED (90s timer, waiting for ground)
+Unmade Ground      aware=SOLVED 10.3s   naive=FAILED (110s timer)
+```
+
+If both passed, the rule would be inert. `npm run probe:control` reproduces this.
+
+### Two real bugs the control test found
+
+Neither would fail a type check; neither throws.
+
+1. **The exemption rescued the player mid-fall.** "Never unmake the floor under your feet"
+   used a geometric test, which counts a platform as supporting the instant the feet pass
+   within a third of a metre — i.e. just before landing. The platform you were staring at
+   turned solid and caught you, so a naive agent cleared the course as fast as a rule-aware
+   one. Now keyed on vertical speed (at rest vs arriving from a jump).
+2. **Gaze had to move from the camera to the character's head.** Measuring the view cone
+   from the camera eye made the mechanic unplayable in third person: a third-person camera
+   frames the player, so the ground beside them is always in shot and no yaw clears it.
+
+### The fallback pack
+
+Three hand-authored challenges, every one of them put through the full pipeline **including
+the probe** in CI. A fallback that does not work is worse than none, because it fails at the
+moment everything else already has.
+
+## NOT verified
+
+- **No live generation call has ever run.** `ANTHROPIC_API_KEY` is empty, so every path
+  exercised so far is the fallback. The route, client, config-to-world pipeline and offline
+  play are all verified; the request shape, the model's schema compliance and the retry loop
+  are not.
+- Frame rate under load — the Browser pane throttles as a background page, so no timing
+  number measured through it is trustworthy.
+- How any of this feels to play. The False Floor is a hard mechanic and nobody has played a
+  full round of it.
+- `REACH_EXIT` on Arena 02 is beyond the probe (it needs gravity timing, which the agent
+  does not do). It is refused rather than guessed at, and the fallback pairs that arena with
+  `SURVIVE_TIMER`.
+
+## What "verified playable" means (D-020)
+
+*An agent completed this configuration, in this simulation, with this seed.* An existence
+proof by construction. **Not** a proof the challenge is solvable in general, and **not** a
+claim a human would find it fair — the agent is handed the route, where a player must deduce
+it. The briefing screen says this in as many words. The failing case is the one that earns
+its keep: nobody is sent into a round that could not be finished.
 
 ## Deviations
 
 - Raw `@dimforge/rapier3d-compat` instead of `@react-three/rapier` (D-011).
 - `npm run lint` still not wired up.
-- `SPATIAL_PORTAL` (Round 3) declared but unimplemented, by design.
+- `SPATIAL_PORTAL` declared but unimplemented, by design — refused with a reason.
+- Opponents are in the schema (contract fidelity) but not implemented; every challenge
+  currently sets `count: 0`.
 - The raw 12.95 MB platform slab remains in git history from Milestone 0.
 
 ## Commands
 
 ```
 npm run dev
-npm run analyze:arena
+npm run probe:fallbacks    # how long the agent takes on each built-in challenge
+npm run probe:control      # rule-aware vs naive agent — proves the mechanics bite
+npm run analyze:arena      # jump reachability for an arena's authored route
 npm run gen:asset      -- --prompt "..." --name x
 npm run gen:character  -- --prompt "..." --name x
 npm run optimize:asset [-- --max 1024]
@@ -110,13 +115,11 @@ npm run relabel:clips  -- <manifest entry>
 
 ## Schedule
 
-Four days to an 18 Nov feature freeze.
+Three days to an 18 Nov feature freeze.
 
-## Next task — Milestone 3
+## Next
 
-1. `ChallengeConfig` schema in zod, matching PROJECT.md §6.
-2. Challenge generator calling an LLM with structured output — provider still undecided
-   (D-006), and it needs a server-side route so the key never reaches the browser.
-3. Validation pipeline: schema → reference → constraint → **solvability probe**. The probe
-   is `src/game/agent/autopilot.ts`, which already plays an arena headless.
-4. A known-good fallback pack so the game is complete with no network at all.
+Milestone 4 is opponents and progression. With the time left, the higher-value work is
+probably: a live generation run once a key exists, a human play-test of The False Floor, and
+the submission materials (report, demo video, X post). An opponent that does not work
+reliably is worth less than a demo that does.

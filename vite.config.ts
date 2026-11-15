@@ -1,8 +1,52 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
+/**
+ * Mounts the challenge generator at /api/challenge during development.
+ *
+ * The handler is imported lazily and only ever runs inside the dev server's Node process,
+ * so the Anthropic key stays server-side — nothing in `src/` can reach it. In production
+ * the same `handleChallengeRequest` is the body of a serverless function; see
+ * docs/API_INTEGRATION.md.
+ */
+function challengeApi(): Plugin {
+  return {
+    name: "paradox-challenge-api",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/api/challenge", (req, res) => {
+        void (async () => {
+          if (req.method !== "POST") {
+            res.statusCode = 405;
+            res.end(JSON.stringify({ error: "POST only" }));
+            return;
+          }
+
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) chunks.push(chunk as Buffer);
+          const raw = Buffer.concat(chunks).toString("utf8");
+
+          try {
+            const body: unknown = raw.length > 0 ? JSON.parse(raw) : {};
+            const { handleChallengeRequest } = await import("./server/challenge-handler.ts");
+            const result = await handleChallengeRequest(body);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(result));
+          } catch (error) {
+            // Never leak an internal message to the browser; log it here instead.
+            console.error("[challenge api]", error);
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: "challenge generation failed" }));
+          }
+        })();
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), challengeApi()],
   server: { port: 5173 },
   build: {
     target: "es2022",

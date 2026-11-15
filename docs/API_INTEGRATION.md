@@ -159,3 +159,63 @@ confirm an `Idle_Loop` clip plays.
 - Whether the retarget GLB carries the skinned mesh or clips only.
 - Rigging acceptance rate for text-generated humanoids.
 - Whether registration credits are enough for ~30–50 generations over the week.
+
+---
+
+# Challenge generation API
+
+Added in Milestone 3. Separate from Lux3D: this is the LLM that designs a round.
+
+## Where the key lives
+
+`ANTHROPIC_API_KEY` is read **only** by `server/challenge-handler.ts`, which runs in Node.
+Nothing under `src/` imports it. The browser calls `POST /api/challenge` and receives a
+validated `ChallengeConfig`.
+
+In development the route is mounted by a Vite plugin (`vite.config.ts` → `challengeApi`).
+For a deployed build, the same `handleChallengeRequest(body)` is the body of one serverless
+function — e.g. `api/challenge.ts` on Vercel:
+
+```ts
+import { handleChallengeRequest } from "../server/challenge-handler.ts";
+
+export default async function handler(req: Request): Promise<Response> {
+  const body: unknown = await req.json().catch(() => ({}));
+  return Response.json(await handleChallengeRequest(body));
+}
+```
+
+## Request / response
+
+```
+POST /api/challenge   { "difficulty": 1 | 2 | 3 }
+
+{
+  "challenge": { ...ChallengeConfig },
+  "source": "generated" | "fallback",
+  "note": "why the fallback was used, when it was",
+  "probe": { "solved": true, "seconds": 9.5, "reason": "..." },
+  "attempts": 1
+}
+```
+
+The server generates, validates and **probes** before replying, so a challenge that reaches
+the browser has already been completed by an agent. On rejection the model gets the specific
+reason back and one retry; after that the built-in pack is used and `source` says so.
+
+## Model
+
+`claude-opus-5-5`, non-streaming, `max_tokens: 4000`. The system prompt enumerates the
+arenas, the three implemented rule types and their parameter ranges, and the hard
+constraints — then the output is validated anyway, because a prompt is not a contract.
+
+Output is requested as a bare JSON object and parsed defensively (tolerating a stray code
+fence). Structured outputs (`output_config.format`) would be tighter and should be adopted
+once there is a key to verify the exact request shape against — noted rather than guessed at.
+
+## Status — UNVERIFIED
+
+**No live generation call has ever run.** `ANTHROPIC_API_KEY` is empty, so every path
+exercised so far is the fallback. What *is* verified: the route responds, the client handles
+it, the config loads into the game, and the whole offline path plays. The request shape, the
+model's compliance with the schema, and the retry loop are untested against the live API.

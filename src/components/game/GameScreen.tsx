@@ -1,11 +1,10 @@
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { ARENA_01 } from "../../game/arena/arena-01.ts";
-import { ARENA_02 } from "../../game/arena/arena-02.ts";
-import type { ArenaDefinition } from "../../game/arena/types.ts";
+import { findArena } from "../../game/arena/registry.ts";
 import { GameWorld, type GameSnapshot } from "../../game/GameWorld.ts";
 import { DEFAULT_TUNING, type LocomotionState } from "../../game/player/controller.ts";
+import { requestChallenge, type ChallengeResult } from "../../integrations/ai/challenge-client.ts";
 import { useInput, type InputHandle } from "../../hooks/useInput.ts";
 import { ArenaView } from "./ArenaView.tsx";
 import { PlayerView } from "./PlayerView.tsx";
@@ -13,23 +12,24 @@ import { PlayerView } from "./PlayerView.tsx";
 /**
  * The game screen.
  *
- * The React tree is a *view*. It never owns game state — `GameWorld` does, in plain
- * TypeScript — and nothing here re-renders per frame: the simulation is read inside
- * `useFrame` and written straight onto three.js objects.
+ * A round is a `ChallengeConfig`: which arena, which rules, what winning means, how long.
+ * It arrives from `/api/challenge` already validated and probed, or from the built-in pack
+ * when there is no network — the title card always says which.
+ *
+ * The React tree is a *view*. It never owns game state, and nothing here re-renders per
+ * frame: the simulation is read inside `useFrame` and written onto three.js objects.
  */
 
 /** The physics capsule is positioned at its centre; the model stands on its feet. */
 const FOOT_DROP = DEFAULT_TUNING.halfHeight + DEFAULT_TUNING.radius;
 
-const ARENAS: ArenaDefinition[] = [ARENA_01, ARENA_02];
-
 export function GameScreen() {
   const containerRef = useRef<HTMLDivElement>(null);
   const input = useInput(containerRef);
 
-  const [arenaId, setArenaId] = useState(ARENA_01.id);
-  const arena = useMemo(() => ARENAS.find((a) => a.id === arenaId) ?? ARENA_01, [arenaId]);
-
+  const [result, setResult] = useState<ChallengeResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [difficulty, setDifficulty] = useState<1 | 2 | 3>(1);
   const [world, setWorld] = useState<GameWorld | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
@@ -37,20 +37,45 @@ export function GameScreen() {
   const snapshotRef = useRef<GameSnapshot | null>(null);
   const [hud, setHud] = useState<GameSnapshot | null>(null);
 
+  const newRound = useCallback((level: 1 | 2 | 3) => {
+    setLoading(true);
+    setDifficulty(level);
+    requestChallenge(level)
+      .then(setResult)
+      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause)))
+      .finally(() => setLoading(false));
+  }, []);
+
   useEffect(() => {
+    newRound(1);
+  }, [newRound]);
+
+  // Build the world whenever a new challenge arrives.
+  useEffect(() => {
+    if (!result) return;
+    const challenge = result.challenge;
+    const arena = findArena(challenge.arenaId);
+    if (!arena) {
+      setError(`Challenge names an unknown arena "${challenge.arenaId}"`);
+      return;
+    }
+
     let disposed = false;
     let created: GameWorld | null = null;
     setWorld(null);
     snapshotRef.current = null;
 
-    GameWorld.create(arena, { seed: arena.id })
+    GameWorld.create(arena, {
+      seed: challenge.id,
+      rules: challenge.rules,
+      objective: challenge.objective,
+      durationSeconds: challenge.durationSeconds,
+    })
       .then((instance) => {
         if (disposed) {
           instance.dispose();
           return;
         }
-        // A refused rule means the arena is not behaving as authored. Say so loudly
-        // rather than letting the player wonder why nothing is strange.
         for (const rejection of instance.rules.rejected) {
           console.error(`[rules] refused ${rejection.ruleId}: ${rejection.reason}`);
         }
@@ -65,9 +90,8 @@ export function GameScreen() {
       disposed = true;
       created?.dispose();
     };
-  }, [arena]);
+  }, [result]);
 
-  // The HUD only needs to be readable, not frame-accurate.
   useEffect(() => {
     const id = window.setInterval(() => {
       if (snapshotRef.current) setHud(snapshotRef.current);
@@ -79,7 +103,7 @@ export function GameScreen() {
   if (error) {
     return (
       <div className="loading" style={{ color: "var(--bad)" }}>
-        Could not start the simulation: {error}
+        Could not start the round: {error}
       </div>
     );
   }
@@ -97,16 +121,23 @@ export function GameScreen() {
         }}
       >
         <SceneLighting />
-        {world ? <Simulation key={world.arena.id} world={world} input={input} snapshotRef={snapshotRef} /> : null}
+        {world ? (
+          <Simulation
+            key={world.arena.id + (result?.challenge.id ?? "")}
+            world={world}
+            input={input}
+            snapshotRef={snapshotRef}
+          />
+        ) : null}
       </Canvas>
 
-      {!world ? <div className="loading">Loading arena…</div> : null}
-      {world && !locked ? (
-        <ClickToPlay
-          arena={arena}
+      {loading ? <div className="loading">Designing a round…</div> : null}
+      {!loading && world && !locked && result ? (
+        <Briefing
+          result={result}
           status={hud?.status ?? "running"}
-          arenas={ARENAS}
-          onPick={setArenaId}
+          difficulty={difficulty}
+          onNewRound={newRound}
         />
       ) : null}
       {world ? <GravityBanner snapshot={hud} /> : null}
@@ -119,9 +150,8 @@ function SceneLighting() {
   return (
     <>
       <color attach="background" args={["#05060a"]} />
-      {/* The course runs 41 m. Fog starting at 26 m faded the back half of it into the
-          background, so the exit and the platforms leading to it were invisible from the
-          start pad — you cannot aim a jump at something you cannot see. */}
+      {/* Fog starting at 26 m faded the back half of a 41 m course into the background —
+          you cannot aim a jump at something you cannot see. */}
       <fog attach="fog" args={["#05060a", 70, 210]} />
       {/* Generated obsidian is nearly black; without fill it reads as a hole. */}
       <ambientLight intensity={0.35} color="#9fc4ff" />
@@ -157,7 +187,6 @@ function Simulation({ world, input, snapshotRef }: SimulationProps) {
   const upSignRef = useRef(1);
   const [thirdPerson, setThirdPerson] = useState(world.camera.mode === "third");
 
-  // Dev-only handle for inspecting the live scene from the console or a test harness.
   useEffect(() => {
     if (!import.meta.env.DEV) return;
     (window as unknown as Record<string, unknown>)["__paradox"] = { scene, camera, world };
@@ -229,22 +258,47 @@ function GravityBanner({ snapshot }: { snapshot: GameSnapshot | null }) {
   );
 }
 
-function ClickToPlay({
-  arena,
+function Briefing({
+  result,
   status,
-  arenas,
-  onPick,
+  difficulty,
+  onNewRound,
 }: {
-  arena: ArenaDefinition;
+  result: ChallengeResult;
   status: string;
-  arenas: ArenaDefinition[];
-  onPick: (id: string) => void;
+  difficulty: 1 | 2 | 3;
+  onNewRound: (level: 1 | 2 | 3) => void;
 }) {
+  const { challenge, source, probe, note } = result;
+  const heading =
+    status === "won" ? "Arena cleared" : status === "lost" ? "Eliminated" : challenge.title;
+
   return (
     <div className="overlay">
       <div className="overlay-card">
-        <h2>{status === "won" ? "Arena cleared" : status === "lost" ? "Eliminated" : arena.name}</h2>
-        <p>{describeRules(arena)}</p>
+        <span className={`source-badge ${source}`}>
+          {source === "generated" ? "AI-designed round" : "built-in round"}
+        </span>
+        <h2>{heading}</h2>
+        <p>{challenge.description}</p>
+
+        <div className="challenge-meta">
+          <span>difficulty {challenge.difficulty}</span>
+          <span>·</span>
+          <span>{challenge.durationSeconds}s</span>
+          <span>·</span>
+          <span>{challenge.objective.type === "REACH_EXIT" ? "reach the exit" : "survive"}</span>
+        </div>
+
+        {/* Say exactly what the verification does and does not mean. */}
+        {probe?.solved ? (
+          <p className="verified">
+            Verified playable — an agent completed this round in {probe.seconds.toFixed(1)}s.
+            That is not a proof it is winnable for everyone.
+          </p>
+        ) : null}
+        {note ? <p className="note">{note}</p> : null}
+
         <p className="hint">Click to take control</p>
         <ul className="keys">
           <li>
@@ -260,15 +314,16 @@ function ClickToPlay({
             <kbd>V</kbd> camera · <kbd>R</kbd> restart · <kbd>Esc</kbd> release
           </li>
         </ul>
+
         <div className="arena-pick" onClick={(event) => event.stopPropagation()}>
-          {arenas.map((option) => (
+          {([1, 2, 3] as const).map((level) => (
             <button
-              key={option.id}
+              key={level}
               className="clip"
-              aria-pressed={option.id === arena.id}
-              onClick={() => onPick(option.id)}
+              aria-pressed={level === difficulty}
+              onClick={() => onNewRound(level)}
             >
-              {option.name}
+              new round · {level}
             </button>
           ))}
         </div>
@@ -277,30 +332,10 @@ function ClickToPlay({
   );
 }
 
-/** A one-line briefing derived from the rules actually loaded, not hardcoded prose. */
-function describeRules(arena: ArenaDefinition): string {
-  const rules = arena.defaultRules ?? [];
-  if (rules.length === 0) return "Ordinary physics. Reach the exit.";
-  const lines = rules.map((rule) => {
-    switch (rule.type) {
-      case "CONDITIONAL_PLATFORM":
-        return rule.parameters["solidWhenObserved"] === true
-          ? "Platforms exist only while you watch them."
-          : "Platforms obey your gaze. Look away to cross.";
-      case "GRAVITY_DIRECTION":
-        return "Gravity will not stay where you left it.";
-      case "OBJECT_STATE":
-        return "Some ground comes and goes.";
-      default:
-        return "Something here does not behave.";
-    }
-  });
-  return lines.join(" ");
-}
-
 function GameHud({ snapshot }: { snapshot: GameSnapshot | null }) {
   if (!snapshot) return null;
-  const { player, status, elapsed, distanceToExit, camera, rules } = snapshot;
+  const { player, status, elapsed, distanceToExit, camera, rules, timeRemaining } = snapshot;
+  const urgent = timeRemaining !== null && timeRemaining < 10;
 
   return (
     <div className="hud game-hud">
@@ -311,8 +346,10 @@ function GameHud({ snapshot }: { snapshot: GameSnapshot | null }) {
         </span>
       </div>
       <div className="row">
-        <span className="k">time</span>
-        <span className="v">{elapsed.toFixed(1)}s</span>
+        <span className="k">{timeRemaining === null ? "time" : "remaining"}</span>
+        <span className={`v ${urgent ? "bad" : ""}`}>
+          {timeRemaining === null ? `${elapsed.toFixed(1)}s` : `${timeRemaining.toFixed(1)}s`}
+        </span>
       </div>
       <div className="row">
         <span className="k">speed</span>

@@ -441,3 +441,48 @@ kbd {
   margin-top: 18px;
   position: relative;
 }
+
+/* ---------- challenge briefing ---------- */
+
+.source-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.source-badge.generated {
+  border-color: var(--accent-dim);
+  color: var(--accent);
+}
+
+.challenge-meta {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.overlay-card .verified {
+  margin-top: 14px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.overlay-card .note {
+  margin-top: 12px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--warn);
+}

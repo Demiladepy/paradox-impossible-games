@@ -104,8 +104,8 @@ default and the one the demo is designed around.
 
 ---
 
-## D-006 — Live challenge generation needs one serverless function; the game works without it
-**Status:** proposed · 2026-11-12 · **open question for the owner**
+## D-006 — Generation runs server-side; the game is complete without it
+**Status:** RESOLVED · 2026-11-15
 
 To call an LLM at runtime without exposing a key, we need one server-side route. Options:
 
@@ -342,3 +342,74 @@ Arena 02's ceiling is **continuous** across the whole corridor. An earlier versi
 ceiling only above the floor gaps, which meant inverting while standing on a floor island
 threw the player into the sky with nothing to land on. Inverting must always be survivable;
 the danger belongs in the *return*, which is on a schedule you can see and plan around.
+
+---
+
+## D-018 — Four validation gates, cheapest first, and the probe runs last
+**Status:** accepted · 2026-11-15
+
+`validateChallenge` runs **shape** (zod, `.strict()` so an unexpected key is a rejection
+rather than a silent drop) → **references** (every arena, platform and exit it names must
+exist; unimplemented rule types refused) → **sanity** (internal coherence: contradictory
+gaze rules, two gravity schedules, inverting gravity in an arena with no ceiling, duplicate
+ids) → **solvability** (play it).
+
+The first three are microseconds and catch most of what a model gets wrong. The probe costs
+a few hundred milliseconds because it runs the real simulation, so it only runs on a
+challenge that has already earned it.
+
+Generation happens **server-side** and validates before replying, so a challenge that
+reaches the browser has already been played by an agent. A rejection is fed back to the
+model as a specific reason with one retry; after that the fallback pack is used and the UI
+says so. The key never leaves the server (`server/challenge-handler.ts`, mounted at
+`/api/challenge`).
+
+## D-019 — The probe plays the mechanics, and a naive-agent control proves they bite
+**Status:** accepted · 2026-11-15
+
+A probe that ignores the rules would pass every challenge and mean nothing. The agent reads
+the active rules: under THE FALSE FLOOR it averts its gaze from the platform it is crossing
+to and strafes, under OBJECT_STATE it waits for the floor to come back, and it refuses to
+step into a gap no jump can clear.
+
+Every challenge is therefore probed **twice** — once by an agent that knows the rules and
+once by one that does not. If both succeed, the rule is inert and the round is not actually
+a challenge. That control test is what caught the next two entries.
+
+### What the control test found
+
+**The exemption was rescuing the player mid-fall.** The "never unmake the floor under your
+feet" exemption used a purely geometric test, which counts a platform as supporting the
+moment the feet pass within a third of a metre — during a fall, that is the instant before
+landing. The platform you were staring at quietly turned solid and caught you, so the naive
+agent cleared the course in the same 9.5s as the rule-aware one. Gating on `grounded`
+instead stuttered (it is a character-controller output that flickers false for a step as the
+player settles, which was enough to unmake the ground beneath them). Vertical speed says it
+properly: at rest the player carries the small downward bias, while a jump lands several
+times faster.
+
+**Gaze had to move from the camera to the character's head.** Measuring the view cone from
+the camera eye seemed more honest — "what is on screen" — and made the mechanic unplayable
+in third person. A third-person camera's whole job is to frame the player, so the ground
+immediately beside them is always in shot; turning away swings the camera round and keeps
+looking at the same patch of floor. There is no yaw that clears the platform you are about
+to step onto. Measured from the character's head, turning away does what it says, and it
+behaves identically in both camera modes.
+
+Neither bug would fail a type check, and neither throws. Both were found by asking a dumb
+agent to try.
+
+## D-020 — What "verified playable" is allowed to mean
+**Status:** accepted · 2026-11-15
+
+A passing probe means: *an agent completed this configuration, in this simulation, with
+this seed.* It is an existence proof by construction.
+
+It is **not** a proof that the challenge is solvable in general, and it is **not** a claim
+that a human would find it fair or discoverable — the agent is handed the route from the
+arena data, where a player has to deduce it. The briefing screen says exactly this
+("an agent completed this round in 9.5s — that is not a proof it is winnable for everyone")
+and the project report will say the same.
+
+A failing probe is the stronger result and the one that earns its keep: nobody gets sent
+into a round that could not be finished.

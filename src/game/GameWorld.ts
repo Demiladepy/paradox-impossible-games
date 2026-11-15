@@ -11,6 +11,7 @@ import {
 import { initPhysics, PhysicsWorld } from "./physics/world.ts";
 import { platformUnderFeet } from "./arena/support.ts";
 import type { ArenaDefinition } from "./arena/types.ts";
+import type { ChallengeObjective } from "./challenges/schema.ts";
 import {
   BUILT_IN_RULES,
   RuleEngine,
@@ -27,6 +28,15 @@ import {
  * Plain TypeScript: no DOM, no React, no three.js. The React layer reads `snapshot()`
  * once per frame and draws it; the solvability probe drives this same class headless.
  */
+
+/**
+ * Vertical speed below which the player counts as resting on a surface rather than
+ * arriving at it. The grounded bias is 2 m/s; a jump lands at roughly 10.
+ */
+const RESTING_SPEED = 4;
+
+/** Height of the eyes above the capsule's centre. */
+const HEAD_OFFSET = 0.55;
 
 export type RunStatus = "running" | "won" | "lost";
 
@@ -53,9 +63,21 @@ export interface GameSnapshot {
   status: RunStatus;
   elapsed: number;
   player: PlayerSnapshot;
-  camera: { eye: Vec3; target: Vec3; mode: CameraMode; forward: Vec3 };
+  camera: {
+    eye: Vec3;
+    target: Vec3;
+    mode: CameraMode;
+    forward: Vec3;
+    /** Orbit centre and boom length, so an agent can predict the eye for a given gaze. */
+    pivot: Vec3;
+    distance: number;
+  };
   rules: RuleSnapshot;
+  /** Where the gaze is measured from — the character's head. */
+  gazeOrigin: Vec3;
   distanceToExit: number;
+  /** Seconds left, or null when the round is untimed. */
+  timeRemaining: number | null;
 }
 
 export interface LookInput {
@@ -70,6 +92,10 @@ export interface GameWorldOptions {
   cameraMode?: CameraMode;
   /** Overrides the arena's own rules. An empty array means "no rules at all". */
   rules?: GameRule[];
+  /** What winning means. Defaults to reaching the arena's exit. */
+  objective?: ChallengeObjective;
+  /** Round length. Omitted means untimed, which is what the traversal tests use. */
+  durationSeconds?: number;
 }
 
 export class GameWorld {
@@ -83,6 +109,8 @@ export class GameWorld {
   private readonly clock = new FixedClock(FIXED_TIMESTEP);
   private status: RunStatus = "running";
   private ruleReport: LoadReport = { accepted: [], rejected: [] };
+  private readonly objective: ChallengeObjective;
+  private readonly durationSeconds: number | null;
 
   /** Mutable views handed to rules each step — no per-step allocation. */
   private readonly playerView: PlayerView;
@@ -93,6 +121,8 @@ export class GameWorld {
   private constructor(arena: ArenaDefinition, options: GameWorldOptions) {
     this.arena = arena;
     this.rng = new Rng(options.seed ?? arena.id);
+    this.objective = options.objective ?? { type: "REACH_EXIT", targetId: arena.exit.id };
+    this.durationSeconds = options.durationSeconds ?? null;
     this.physics = new PhysicsWorld(arena.gravity, FIXED_TIMESTEP);
 
     for (const platform of arena.platforms) {
@@ -202,12 +232,41 @@ export class GameWorld {
     this.playerView.position = this.player.position;
     this.playerView.velocity = this.player.velocity;
     this.playerView.grounded = this.player.grounded;
+    // What counts as "the floor I am standing on", for THE FALSE FLOOR's exemption.
+    //
+    // This needs to be exactly right, and two obvious answers are both wrong. A purely
+    // geometric test counts a platform as supporting the moment the feet pass within a
+    // third of a metre — which during a fall is the instant before landing, so the
+    // platform you were staring at quietly turns solid and catches you, and the mechanic
+    // is inert. Gating on `grounded` instead fixes that but stutters: it is an output of
+    // the character controller and flickers false for a step as the player settles, which
+    // is enough to unmake the ground beneath them.
+    //
+    // Resting is the thing we actually mean, and vertical speed says it plainly: a player
+    // at rest carries the small downward bias that keeps them pressed into the floor,
+    // while a player arriving from a jump is moving several times faster.
+    const resting = Math.abs(this.player.velocity.y) < RESTING_SPEED;
     this.playerView.supportingPlatformId =
-      platformUnderFeet(this.arena, this.player.position, this.capsuleHalf, upSign)?.id ?? null;
+      resting || this.player.grounded
+        ? (platformUnderFeet(this.arena, this.player.position, this.capsuleHalf, upSign)?.id ??
+          null)
+        : null;
 
-    // Gaze starts at the eye, because what matters is what is on screen — in third
-    // person that is the camera's position, not the character's head.
-    this.gazeView.origin = this.camera.eye;
+    // Gaze is the character's line of sight from their own head — NOT the camera's.
+    //
+    // Using the camera eye seemed more honest ("what is on screen") and made THE FALSE
+    // FLOOR unplayable in third person. A third-person camera's entire job is to frame the
+    // player, so the ground immediately beside them is always in shot; turning away swings
+    // the camera around and keeps looking straight back at the same patch of floor. There
+    // is literally no yaw that clears the platform you are about to step onto.
+    //
+    // From the head, turning away does what it says, and it behaves identically in both
+    // camera modes. The direction is still the one the player aims with the mouse.
+    this.gazeView.origin = {
+      x: this.player.position.x,
+      y: this.player.position.y + HEAD_OFFSET * upSign,
+      z: this.player.position.z,
+    };
     this.gazeView.forward = this.camera.forward;
   }
 
@@ -225,10 +284,22 @@ export class GameWorld {
       return;
     }
 
-    const exit = this.arena.exit;
-    const withinRadius = distanceXZ(position, exit.position) <= exit.radius;
-    const withinHeight = Math.abs(position.y - exit.position.y) <= 2.2;
-    if (withinRadius && withinHeight) this.status = "won";
+    // Reaching the exit wins a REACH_EXIT round at any point.
+    if (this.objective.type === "REACH_EXIT") {
+      const exit = this.arena.exit;
+      const withinRadius = distanceXZ(position, exit.position) <= exit.radius;
+      const withinHeight = Math.abs(position.y - exit.position.y) <= 2.2;
+      if (withinRadius && withinHeight) {
+        this.status = "won";
+        return;
+      }
+    }
+
+    if (this.durationSeconds === null) return;
+    if (this.clock.simulatedSeconds < this.durationSeconds) return;
+
+    // Time is up. For SURVIVE_TIMER that is the win condition; otherwise it is the loss.
+    this.status = this.objective.type === "SURVIVE_TIMER" ? "won" : "lost";
   }
 
   restart(): void {
@@ -263,6 +334,8 @@ export class GameWorld {
         target: this.camera.target,
         mode: this.camera.mode,
         forward: this.camera.forward,
+        pivot: this.camera.pivotPoint,
+        distance: this.camera.distance,
       },
       rules: {
         phantom: [...effects.phantom],
@@ -270,7 +343,12 @@ export class GameWorld {
         upSign: effects.upSign,
         warning: effects.warning,
       },
+      gazeOrigin: this.gazeView.origin,
       distanceToExit: distanceXZ(this.player.position, this.arena.exit.position),
+      timeRemaining:
+        this.durationSeconds === null
+          ? null
+          : Math.max(0, this.durationSeconds - this.clock.simulatedSeconds),
     };
   }
 

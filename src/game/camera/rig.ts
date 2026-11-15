@@ -75,6 +75,12 @@ export class CameraRig {
     };
   }
 
+  /** The point the camera orbits. Exposed so an agent can predict where a given
+   *  yaw/pitch would put the eye — in third person, tilting the view moves it. */
+  get pivotPoint(): Vec3 {
+    return this.pivot;
+  }
+
   /** Where the player is looking. The gaze vector THE FALSE FLOOR will test against. */
   get forward(): Vec3 {
     return forwardFromAngles(this.yaw, this.pitch);

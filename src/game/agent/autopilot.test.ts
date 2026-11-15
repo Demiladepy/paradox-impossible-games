@@ -36,8 +36,9 @@ async function playArena(seed: string): Promise<RunResult> {
     const snapshot = world.snapshot();
     if (snapshot.status !== "running") break;
 
-    const input = pilot.decide(snapshot, (yaw) => {
+    const input = pilot.decide(snapshot, (yaw, pitch) => {
       world.camera.yaw = yaw;
+      world.camera.pitch = pitch;
     });
     world.update(input, NO_LOOK, FIXED_TIMESTEP);
   }
