@@ -1,14 +1,52 @@
 # Build Status
 
-**Updated:** 2026-11-15 · **Milestones 0–3: COMPLETE** · Next: Milestone 4 (opponent and
-progression) — or polish, given the remaining time
+**Updated:** 2026-11-15 · **Milestones 0–4: COMPLETE** · Remaining: live generation run,
+human play-test, demo recording, submission
+
+## Where the project stands
+
+A complete playable run: three rounds of rising difficulty, rivals racing you, a timer, a
+result card between rounds and a summary at the end. Five Lux3D assets in gameplay. Sound.
+Works offline.
+
+| Check | Result |
+| --- | --- |
+| `npm run typecheck` | passes, 0 errors |
+| `npm run test` | **109/109 passing** across 8 files |
+| `npm run build` | passes |
+| `npm run probe:control` | rule-aware agent solves; naive agent fails — mechanics bite |
+| Lux3D assets | 5 assets, 12 API tasks, 110.89 MB → 9.89 MB (−91%) |
+
+## Added since Milestone 3
+
+- **Rivals.** The solvability probe, handicapped, racing the player — 29.5s against its own
+  11.9s unhandicapped. Each contestant observes their own arena, so a rival's gaze cannot
+  unmake the floor under you.
+- **Run progression.** Three rounds, result cards, run summary.
+- **Two more Lux3D assets** (obelisk, pillar) as non-colliding scenery, plus a second
+  rigged and animated character for the rival.
+- **Sound**, synthesised in-browser; cues carry information otherwise only on the HUD.
+- **Submission materials**: report, demo shot list, checklist with X post draft.
+
+## Bugs found and fixed in this pass
+
+1. **The ascent needed jumping into a vertical face.** 1.0 m rises with zero gap worked at
+   full speed and failed for anyone slower — the handicapped rival exposed it immediately.
+   Now 0.40 m steps, under the autostep threshold, so the staircase is walked.
+2. **Stuck-detection keyed on speed**, which made a loop: land with no horizontal velocity,
+   read as stuck, jump again, never stay grounded long enough to walk. Now keyed on whether
+   the agent is closing on its target.
+3. **Tinting a rival turned the player red too** — `SkeletonUtils.clone` copies the scene
+   graph but leaves every mesh pointing at the same material instance.
+4. **Lux3D polling discarded a generation on a transient network failure** eight minutes in
+   and already paid for. Now tolerates consecutive failures.
 
 ## Verified — actually run on this machine
 
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | passes, 0 errors |
-| `npm run test` | **94/94 passing** across 7 files |
+| `npm run test` | **109/109 passing** across 8 files |
 | `npm run build` | passes — main 1,374 kB (381 kB gzip) + lazy 4,335 kB rapier chunk |
 | `POST /api/challenge` | responds with a validated, probed challenge |
 
