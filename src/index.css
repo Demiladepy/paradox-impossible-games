@@ -541,3 +541,28 @@ kbd {
 .run-summary .bad {
   color: var(--bad);
 }
+
+.mute {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  background: rgba(14, 16, 24, 0.86);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+.mute:hover {
+  color: var(--text);
+}
+
+.mute[aria-pressed="true"] {
+  color: var(--bad);
+  border-color: var(--bad);
+}

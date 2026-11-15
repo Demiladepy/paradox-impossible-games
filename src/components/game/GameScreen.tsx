@@ -5,6 +5,8 @@ import { Round, type RoundResult, type RoundSnapshot } from "../../game/progress
 import { DEFAULT_TUNING, type LocomotionState } from "../../game/player/controller.ts";
 import { requestChallenge, type ChallengeResult } from "../../integrations/ai/challenge-client.ts";
 import { useInput, type InputHandle } from "../../hooks/useInput.ts";
+import { useGameAudio } from "../../hooks/useGameAudio.ts";
+import { sound } from "../../audio/sound.ts";
 import { ArenaView } from "./ArenaView.tsx";
 import { CONTESTANT_URL, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 
@@ -43,6 +45,7 @@ export function GameScreen() {
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const [rivalUrl, setRivalUrl] = useState(CONTESTANT_URL);
+  const [muted, setMuted] = useState(false);
 
   const snapshotRef = useRef<RoundSnapshot | null>(null);
   const [hud, setHud] = useState<RoundSnapshot | null>(null);
@@ -134,6 +137,14 @@ export function GameScreen() {
     if (phase === "briefing" && locked) setPhase("playing");
   }, [phase, locked]);
 
+  // Browsers refuse to start an AudioContext outside a user gesture, and taking pointer
+  // lock is the one gesture every player makes.
+  useEffect(() => {
+    if (!locked) return;
+    sound.resume();
+    sound.startDrone();
+  }, [locked]);
+
   if (error) {
     return (
       <div className="loading" style={{ color: "var(--bad)" }}>
@@ -192,6 +203,18 @@ export function GameScreen() {
 
       {round && !overlayOpen ? <GravityBanner snapshot={hud} /> : null}
       {round ? <GameHud snapshot={hud} roundNumber={roundIndex + 1} total={ROUNDS_PER_RUN} /> : null}
+      <button
+        className="mute"
+        aria-pressed={muted}
+        onClick={(event) => {
+          event.stopPropagation();
+          const next = !muted;
+          setMuted(next);
+          sound.setMuted(next);
+        }}
+      >
+        {muted ? "sound off" : "sound on"}
+      </button>
     </div>
   );
 }
@@ -233,6 +256,7 @@ interface SimulationProps {
 
 function Simulation({ round, input, snapshotRef, rivalUrl }: SimulationProps) {
   const { camera, scene } = useThree();
+  const playAudio = useGameAudio();
   const playerRef = useRef<THREE.Group>(null);
   const rivalRefs = useRef<(THREE.Group | null)[]>([]);
   const locomotionRef = useRef<LocomotionState>("idle");
@@ -270,6 +294,7 @@ function Simulation({ round, input, snapshotRef, rivalUrl }: SimulationProps) {
 
     const snapshot = round.snapshot();
     snapshotRef.current = snapshot;
+    playAudio(snapshot);
     const game = snapshot.game;
 
     const { eye, target } = game.camera;

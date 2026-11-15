@@ -20,7 +20,7 @@ import { NodeIO } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import { dedup, prune, textureCompress, TextureResizeFilter } from "@gltf-transform/functions";
 import sharp from "sharp";
-import { GENERATED_DIR, parseArgs, readManifest } from "./store.ts";
+import { GENERATED_DIR, parseArgs, readManifest, upsertEntry } from "./store.ts";
 
 const RAW_DIR = join(GENERATED_DIR, "_raw");
 
@@ -62,6 +62,22 @@ async function optimize(fileName: string, maxSize: number, quality: number): Pro
 
   const after = output.byteLength;
   const saved = before > 0 ? Math.round((1 - after / before) * 100) : 0;
+
+  // Keep the manifest honest. It records what is actually on disk and it is the evidence
+  // trail for the project report, so a stale byte count is a small lie in a document whose
+  // whole value is being accurate.
+  const manifest = await readManifest();
+  const entry = manifest.entries.find((candidate) => candidate.file.endsWith(`/${fileName}`));
+  if (entry && entry.bytes !== after) {
+    await upsertEntry({
+      ...entry,
+      bytes: after,
+      notes: [entry.notes, `Optimised: textures <=${maxSize}px WebP, was ${mb(before)}.`]
+        .filter(Boolean)
+        .join(" ")
+        .trim(),
+    });
+  }
   console.log(
     `${fileName.padEnd(28)} ${mb(before).padStart(9)} -> ${mb(after).padStart(9)}  (-${saved}%)`,
   );

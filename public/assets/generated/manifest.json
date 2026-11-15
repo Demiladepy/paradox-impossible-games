@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-15T13:11:04.681Z",
+  "updatedAt": "2026-11-15T13:26:51.439Z",
   "entries": [
     {
       "name": "arena-pillar",
@@ -12,7 +12,8 @@
       "taskId": 8015029,
       "source": "text-to-3d",
       "createdAt": "2026-11-15T13:11:04.655Z",
-      "bytes": 10932932
+      "bytes": 1241492,
+      "notes": "Optimised: textures <=1024px WebP, was 10.43 MB."
     },
     {
       "name": "contestant-01-anim",
@@ -22,7 +23,7 @@
       "taskId": 6929908,
       "source": "retarget",
       "createdAt": "2026-11-12T21:40:51.135Z",
-      "bytes": 21999768,
+      "bytes": 1985584,
       "animations": [
         "Idle_Loop",
         "Walk_Loop",
@@ -36,7 +37,7 @@
         "Death01"
       ],
       "derivedFromTaskId": 6929848,
-      "notes": "Combined, in-place clips retargeted onto the rigged character."
+      "notes": "Combined, in-place clips retargeted onto the rigged character. Optimised: textures <=1024px WebP, was 20.98 MB."
     },
     {
       "name": "contestant-01-rigged",
@@ -49,9 +50,9 @@
       "taskId": 6929848,
       "source": "rig",
       "createdAt": "2026-11-12T21:38:34.025Z",
-      "bytes": 21297912,
+      "bytes": 1492216,
       "derivedFromTaskId": 6929612,
-      "notes": "Rigged character: model + materials + skeleton + skin."
+      "notes": "Rigged character: model + materials + skeleton + skin. Optimised: textures <=1024px WebP, was 20.31 MB."
     },
     {
       "name": "exit-obelisk",
@@ -64,7 +65,8 @@
       "taskId": 8015028,
       "source": "text-to-3d",
       "createdAt": "2026-11-15T13:10:06.632Z",
-      "bytes": 10916424
+      "bytes": 1073576,
+      "notes": "Optimised: textures <=1024px WebP, was 10.41 MB."
     },
     {
       "name": "platform-slab",
@@ -77,7 +79,23 @@
       "taskId": 6929533,
       "source": "text-to-3d",
       "createdAt": "2026-11-12T21:30:29.115Z",
-      "bytes": 13581660
+      "bytes": 1430616,
+      "notes": "Optimised: textures <=1024px WebP, was 12.95 MB."
+    },
+    {
+      "name": "rival-01-rigged",
+      "kind": "character",
+      "file": "/assets/generated/rival-01-rigged.glb",
+      "prompt": "a lean humanoid game character in a symmetrical T-pose with arms straight out horizontally, matte black carbon-fibre bodysuit with glowing crimson seams and a featureless visor helmet, stylized sci-fi rival contestant, full body, clean silhouette, separated limbs",
+      "style": "cyberpunk",
+      "version": "G1-Turbo",
+      "faceCount": 28000,
+      "taskId": 8015470,
+      "source": "rig",
+      "createdAt": "2026-11-15T13:26:51.409Z",
+      "bytes": 18423844,
+      "derivedFromTaskId": 8015374,
+      "notes": "Rigged character: model + materials + skeleton + skin."
     }
   ]
 }
