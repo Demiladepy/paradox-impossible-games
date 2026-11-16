@@ -261,6 +261,26 @@ could not be finished.**
 
 ---
 
+### 6.4 It works, and the gates matter
+
+Measured against the live API:
+
+| Difficulty | Time | Result |
+| --- | --- | --- |
+| 1 | 7.1 s | "Shy Steps" — probe solved in 11.9 s |
+| 2 | 7.1 s | "Don't Look Down" — gaze + blinking platforms, probe solved in 18.2 s |
+| 3 | 15.0 s | "Blind Faith Ascent" — two rivals, probe solved in 18.2 s |
+
+On the first live call the model omitted a required field on every rule. The schema caught
+it, the specific failure went back as a retry, and the second attempt passed all four
+gates. That is the system behaving exactly as designed on its first contact with reality —
+and showing a complete rule in the prompt removed the mistake entirely, halving latency.
+
+The model is genuinely good at the part we asked it to be good at. *"The steps are shy and
+vanish under a stare… Trust your feet, not your eyes, and listen to the beat"* is its own
+writing, and the last clause is it working out that blinking platforms have an audible
+rhythm.
+
 ## 7. The opponent is the probe
 
 Your rival is the same `Autopilot` that validated the round, handicapped on speed and

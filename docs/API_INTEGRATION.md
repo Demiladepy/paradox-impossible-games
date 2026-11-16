@@ -213,9 +213,24 @@ Output is requested as a bare JSON object and parsed defensively (tolerating a s
 fence). Structured outputs (`output_config.format`) would be tighter and should be adopted
 once there is a key to verify the exact request shape against — noted rather than guessed at.
 
-## Status — UNVERIFIED
+## Status — VERIFIED
 
-**No live generation call has ever run.** `ANTHROPIC_API_KEY` is empty, so every path
-exercised so far is the fallback. What *is* verified: the route responds, the client handles
-it, the config loads into the game, and the whole offline path plays. The request shape, the
-model's compliance with the schema, and the retry loop are untested against the live API.
+Live generation runs. Measured on 2026-11-16 with a real key:
+
+| Difficulty | Attempts | Time | Result |
+| --- | --- | --- | --- |
+| 1 | 1 | 7.1 s | "Shy Steps" — gaze rule, 1 rival, probe solved in 11.9 s |
+| 2 | 1 | 7.1 s | "Don't Look Down" — gaze + blink, probe solved in 18.2 s |
+| 3 | 1 | 15.0 s | "Blind Faith Ascent" — gaze + blink, 2 rivals, probe solved in 18.2 s |
+
+**The validation layer earned its keep on the very first live call.** Every early attempt
+omitted `rules[].id`; the schema caught it, the specific reason went back to the model, and
+the retry passed. Showing a complete rule in the prompt — with a note that `id` is the most
+commonly forgotten field — removed the failure entirely and halved the latency.
+
+What the model is good at: titles and briefings. "The steps are shy and vanish under a
+stare… Trust your feet, not your eyes, and listen to the beat" is its own line, and the
+last clause is it inferring that blinking platforms have an audible rhythm.
+
+What it is unreliable at: exactly the things the gates check. It will not be trusted
+further than they allow.

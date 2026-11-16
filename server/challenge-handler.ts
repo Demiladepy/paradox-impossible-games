@@ -70,7 +70,7 @@ RULE TYPES — only these three are implemented. Anything else is rejected.
      periodSeconds (0.5–60), dutyCycle (0.05–0.95 — fraction of each period the platform is solid),
      stagger (0–30), startSolid (boolean)
 
-SHAPE:
+SHAPE — every field is required, including each rule's own "id":
 {
   "id": "kebab-case-id",
   "title": "at most 60 characters",
@@ -79,8 +79,18 @@ SHAPE:
   "objective": { "type": "REACH_EXIT" | "SURVIVE_TIMER", "targetId": "<that arena's exit id>" },
   "durationSeconds": integer ${MIN_DURATION}–${MAX_DURATION},
   "difficulty": 1 | 2 | 3,
-  "rules": [ 1–4 rules ],
+  "rules": [ 1–4 rules, each shaped exactly like this ],
   "opponents": { "count": 0-2, "difficulty": "EASY" | "NORMAL" }
+}
+
+A COMPLETE RULE looks like this. Note the "id" — it is required on every rule and is the
+single most common thing to forget:
+{
+  "id": "gaze-steps",
+  "type": "CONDITIONAL_PLATFORM",
+  "targetIds": ["step-01", "step-02"],
+  "parameters": { "solidWhenObserved": false, "coneDegrees": 58 },
+  "trigger": { "type": "PLAYER_CAMERA_DIRECTION" }
 }
 
 HARD CONSTRAINTS — a challenge breaking any of these is rejected:
