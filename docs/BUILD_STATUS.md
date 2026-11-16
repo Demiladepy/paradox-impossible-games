@@ -5,41 +5,33 @@ human play-test, demo recording, submission
 
 ## Where the project stands
 
-A complete playable run: three rounds of rising difficulty, rivals racing you, a timer, a
-result card between rounds and a summary at the end. Five Lux3D assets in gameplay. Sound.
-Works offline.
+A complete playable run: three rounds drawn from a pack of **seven verified rounds**, rivals
+racing you, a timer, pause, result cards and a run summary. Five Lux3D assets in gameplay.
+Sound. Works offline.
 
 | Check | Result |
 | --- | --- |
 | `npm run typecheck` | passes, 0 errors |
-| `npm run test` | **109/109 passing** across 8 files |
+| `npm run test` | **116/116 passing** across 8 files |
 | `npm run build` | passes |
-| `npm run probe:control` | rule-aware agent solves; naive agent fails — mechanics bite |
+| `npm run probe:control` | 5 rounds × 2 agents — rule-aware solves, naive fails, every time |
+| `npm run probe:fallbacks` | all 7 rounds solved by the probe |
+| `npm run budget` | 366k triangles (Arena 01), 202k (Arena 02) |
 | Lux3D assets | 5 assets, 12 API tasks, 110.89 MB → 9.89 MB (−91%) |
 
-## Added since Milestone 3
+## The control experiment
 
-- **Rivals.** The solvability probe, handicapped, racing the player — 29.5s against its own
-  11.9s unhandicapped. Each contestant observes their own arena, so a rival's gaze cannot
-  unmake the floor under you.
-- **Run progression.** Three rounds, result cards, run summary.
-- **Two more Lux3D assets** (obelisk, pillar) as non-colliding scenery, plus a second
-  rigged and animated character for the rival.
-- **Sound**, synthesised in-browser; cues carry information otherwise only on the HUD.
-- **Submission materials**: report, demo shot list, checklist with X post draft.
+```
+                   rule-aware agent    agent ignoring the rules
+The False Floor    SOLVED  11.9s       FAILED (timed out)
+Wrong Way Round    SOLVED  11.8s       FAILED (eliminated 2.5s)
+Stutter            SOLVED  16.8s       FAILED (eliminated 6.5s)
+Narrow Margin      SOLVED  11.8s       FAILED (timed out)
+Unmade Ground      SOLVED  11.5s       FAILED (timed out)
+```
 
-## Bugs found and fixed in this pass
-
-1. **The ascent needed jumping into a vertical face.** 1.0 m rises with zero gap worked at
-   full speed and failed for anyone slower — the handicapped rival exposed it immediately.
-   Now 0.40 m steps, under the autostep threshold, so the staircase is walked.
-2. **Stuck-detection keyed on speed**, which made a loop: land with no horizontal velocity,
-   read as stuck, jump again, never stay grounded long enough to walk. Now keyed on whether
-   the agent is closing on its target.
-3. **Tinting a rival turned the player red too** — `SkeletonUtils.clone` copies the scene
-   graph but leaves every mesh pointing at the same material instance.
-4. **Lux3D polling discarded a generation on a transient network failure** eight minutes in
-   and already paid for. Now tolerates consecutive failures.
+Stutter's extra five seconds is the agent waiting for blinking platforms to return — the
+probe plays the round rather than racing through it.
 
 ## Verified — actually run on this machine
 
