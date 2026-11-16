@@ -1,4 +1,12 @@
-import { EffectComposer, Bloom, Vignette, ChromaticAberration, SMAA } from "@react-three/postprocessing";
+import {
+  EffectComposer,
+  Bloom,
+  Vignette,
+  ChromaticAberration,
+  HueSaturation,
+  BrightnessContrast,
+  SMAA,
+} from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
 import { useMemo } from "react";
@@ -41,7 +49,12 @@ export function PostFx() {
         modulationOffset={0.35}
         blendFunction={BlendFunction.NORMAL}
       />
-      <Vignette eskil={false} offset={0.26} darkness={0.78} />
+      {/* A light grade. Pushing saturation and contrast after the bloom keeps the teal
+          accents vivid against the near-black without the slabs turning muddy — the
+          generated PBR maps are fairly desaturated on their own. */}
+      <HueSaturation saturation={0.16} hue={0} />
+      <BrightnessContrast brightness={-0.015} contrast={0.14} />
+      <Vignette eskil={false} offset={0.24} darkness={0.82} />
       <SMAA />
     </EffectComposer>
   );

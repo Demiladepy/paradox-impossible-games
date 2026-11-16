@@ -18,6 +18,9 @@ import { CLIP_FOR_STATE } from "../../game/player/animation.ts";
 export const CONTESTANT_URL = "/assets/generated/contestant-01-anim.glb";
 export const RIVAL_URL = "/assets/generated/rival-01-anim.glb";
 
+/** Cool rim for the player; rivals get warm ones. Reads instantly at a distance. */
+export const PLAYER_TINT = "#2f8fd8";
+
 /** Height in metres to normalise the generated model to — Lux3D's own scale varies (D-008). */
 const TARGET_HEIGHT = 1.78;
 
@@ -75,7 +78,10 @@ export const PlayerView = forwardRef<THREE.Group, PlayerViewProps>(function Play
             const copy = material.clone();
             if (copy instanceof THREE.MeshStandardMaterial) {
               copy.emissive = new THREE.Color(tint);
-              copy.emissiveIntensity = 0.5;
+              // Low enough that the generated PBR maps still read. An emissive wash strong
+              // enough to colour-code a contestant will happily flatten the texture work
+              // that made them worth generating in the first place.
+              copy.emissiveIntensity = tint === PLAYER_TINT ? 0.1 : 0.26;
             }
             return copy;
           });

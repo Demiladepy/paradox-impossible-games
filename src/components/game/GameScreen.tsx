@@ -8,7 +8,8 @@ import { useInput, type InputHandle } from "../../hooks/useInput.ts";
 import { useGameAudio } from "../../hooks/useGameAudio.ts";
 import { sound } from "../../audio/sound.ts";
 import { ArenaView } from "./ArenaView.tsx";
-import { CONTESTANT_URL, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
+import { Atmosphere } from "./Atmosphere.tsx";
+import { CONTESTANT_URL, PLAYER_TINT, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 import { PerfPanel, PerfProbe, type PerfSample } from "./PerfReadout.tsx";
 import { PostFx } from "./PostFx.tsx";
 
@@ -362,11 +363,13 @@ function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef }: Simulati
     // the whole subtree unwinds and the frame loop above never gets to run.
     <Suspense fallback={null}>
       <ArenaView arena={round.world.arena} phantomRef={phantomRef} />
+      <Atmosphere arena={round.world.arena} />
       <PlayerView
         ref={playerRef}
         locomotionRef={locomotionRef}
         upSignRef={upSignRef}
         visible={thirdPerson}
+        tint={PLAYER_TINT}
       />
       {Array.from({ length: rivalCount }, (_, index) => (
         <RivalView

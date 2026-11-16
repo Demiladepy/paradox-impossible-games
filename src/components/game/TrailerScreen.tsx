@@ -8,7 +8,8 @@ import { NO_LOOK } from "../../game/GameWorld.ts";
 import { Round, type RoundSnapshot } from "../../game/progression/round.ts";
 import { DEFAULT_TUNING, type LocomotionState } from "../../game/player/controller.ts";
 import { ArenaView } from "./ArenaView.tsx";
-import { CONTESTANT_URL, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
+import { Atmosphere } from "./Atmosphere.tsx";
+import { CONTESTANT_URL, PLAYER_TINT, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 import { PostFx } from "./PostFx.tsx";
 
 /**
@@ -300,7 +301,14 @@ function CinematicRunner({
   return (
     <Suspense fallback={null}>
       <ArenaView arena={round.world.arena} phantomRef={phantomRef} />
-      <PlayerView ref={playerRef} locomotionRef={locomotionRef} upSignRef={upSignRef} visible />
+      <Atmosphere arena={round.world.arena} />
+      <PlayerView
+        ref={playerRef}
+        locomotionRef={locomotionRef}
+        upSignRef={upSignRef}
+        visible
+        tint={PLAYER_TINT}
+      />
       {hasRival ? (
         <PlayerView
           ref={rivalRef}
