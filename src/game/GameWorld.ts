@@ -39,6 +39,12 @@ const RESTING_SPEED = 4;
 /** Height of the eyes above the capsule's centre. */
 const HEAD_OFFSET = 0.55;
 
+/** Clearance kept between the camera and whatever it would otherwise clip into. */
+const CAMERA_SKIN = 0.45;
+
+/** Closest the camera may be pulled before the character fills the frame. */
+const CAMERA_MIN_DISTANCE = 1.6;
+
 export type RunStatus = "running" | "won" | "lost";
 
 export interface PlayerSnapshot {
@@ -228,7 +234,32 @@ export class GameWorld {
     }
 
     this.camera.update(this.player.position, Math.max(deltaSeconds, 1e-4));
+    this.clampCameraToGeometry();
     return steps;
+  }
+
+  /**
+   * Keep the third-person camera out of the scenery.
+   *
+   * Without this the boom passes straight through platforms on the ascent and the view
+   * fills with the inside of a slab — which on a demo video reads as a broken game rather
+   * than a tight corner.
+   */
+  private clampCameraToGeometry(): void {
+    if (this.camera.mode !== "third") {
+      this.camera.obstruction = null;
+      return;
+    }
+
+    const forward = this.camera.forward;
+    const pivot = this.camera.pivotPoint;
+    const back = { x: -forward.x, y: -forward.y, z: -forward.z };
+
+    const hit = this.physics.castRay(pivot, back, this.camera.distance + CAMERA_SKIN);
+    // Pull in short of the surface, and never closer than arm's length, or the camera
+    // ends up inside the character.
+    this.camera.obstruction =
+      hit === null ? null : Math.max(CAMERA_MIN_DISTANCE, hit - CAMERA_SKIN);
   }
 
   private refreshRuleViews(): void {

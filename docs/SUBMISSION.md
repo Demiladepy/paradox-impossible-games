@@ -68,6 +68,26 @@ the first three seconds decide whether anyone watches.
 
 ---
 
+## Check frame rate before you record
+
+This is the one thing that was never measurable during development — the preview pane runs
+as a background page and throttles, so every timing number taken through it is worthless.
+The game now carries the instrument instead.
+
+Press **P** in game. You get fps, triangles and draw calls straight off the renderer.
+
+Measured geometry budget (`npm run budget`):
+
+| Arena | Slabs | Scenery | Characters | Total |
+| --- | --- | --- | --- | --- |
+| The Gauntlet | 200,992 | 89,572 | 75,930 | **366,494** |
+| Inversion | 73,088 | 53,148 | 75,930 | **202,166** |
+
+If fps sits below 55 on the machine you are recording from, the cheapest fixes in order:
+drop the shadow map from 2048 to 1024 in `SceneLighting`, remove two pillars from
+`ARENA_01.decor`, or lower `dpr` on the Canvas from 1.75 to 1.25. Any one of them will
+buy headroom without touching gameplay.
+
 ## Pre-submission verification
 
 Run these and confirm each passes before freezing:
@@ -82,6 +102,10 @@ npm run probe:control
 
 ```bash
 npm run analyze:arena
+```
+
+```bash
+npm run budget
 ```
 
 Then play one complete run start to finish on the production build (`npm run preview`), on

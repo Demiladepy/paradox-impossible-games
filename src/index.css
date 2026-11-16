@@ -566,3 +566,11 @@ kbd {
   color: var(--bad);
   border-color: var(--bad);
 }
+
+.perf-panel {
+  right: 16px;
+  top: 16px;
+  left: auto;
+  bottom: auto;
+  min-width: 170px;
+}

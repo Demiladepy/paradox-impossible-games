@@ -18,7 +18,8 @@
     "optimize:asset": "node --import tsx scripts/lux3d/optimize.ts",
     "analyze:arena": "node --import tsx scripts/analyze-arena.ts",
     "probe:fallbacks": "node --import tsx scripts/probe-fallbacks.ts",
-    "probe:control": "node --import tsx scripts/probe-control.ts"
+    "probe:control": "node --import tsx scripts/probe-control.ts",
+    "budget": "node --import tsx scripts/budget.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

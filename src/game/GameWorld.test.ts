@@ -134,6 +134,43 @@ describe("GameWorld", () => {
   });
 });
 
+describe("camera stays out of the scenery", () => {
+  it("pulls the boom in when geometry is behind the player", async () => {
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
+    run(world, NO_INPUT, 60);
+    expect(world.camera.obstruction).toBeNull();
+
+    // Look steeply upward: in third person that swings the boom downward, straight into
+    // the platform the player is standing on.
+    world.camera.pitch = 1.2;
+    run(world, NO_INPUT, 2);
+
+    expect(world.camera.obstruction).not.toBeNull();
+    expect(world.camera.effectiveDistance).toBeLessThan(world.camera.distance);
+    world.dispose();
+  });
+
+  it("never pulls the camera closer than arm's length", async () => {
+    const world = await GameWorld.create(ARENA_01, { rules: [] });
+    run(world, NO_INPUT, 60);
+    world.camera.pitch = 1.5;
+    run(world, NO_INPUT, 2);
+
+    expect(world.camera.effectiveDistance).toBeGreaterThanOrEqual(1.5);
+    world.dispose();
+  });
+
+  it("does not clamp in first person, where there is no boom", async () => {
+    const world = await GameWorld.create(ARENA_01, { rules: [], cameraMode: "first" });
+    run(world, NO_INPUT, 60);
+    world.camera.pitch = 1.2;
+    run(world, NO_INPUT, 2);
+
+    expect(world.camera.obstruction).toBeNull();
+    world.dispose();
+  });
+});
+
 describe("arena definition", () => {
   it("exposes unique, stable ids for every targetable object", () => {
     const ids = arenaObjectIds(ARENA_01);

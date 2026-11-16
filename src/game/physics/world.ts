@@ -198,6 +198,26 @@ export class PhysicsWorld {
     this.controller?.setUp(up);
   }
 
+  /**
+   * Distance to the first solid thing along a ray, or null if nothing is hit.
+   *
+   * Used to stop the third-person camera travelling through the floor. The player's own
+   * capsule is excluded: the camera looks *at* the player, so without that exclusion every
+   * cast would hit them immediately and pin the camera to their back.
+   */
+  castRay(origin: Vec3, direction: Vec3, maxDistance: number): number | null {
+    const ray = new (R().Ray)(origin, direction);
+    const hit = this.world.castRay(
+      ray,
+      maxDistance,
+      true,
+      undefined,
+      undefined,
+      this.characterCollider ?? undefined,
+    );
+    return hit ? hit.timeOfImpact : null;
+  }
+
   step(): void {
     this.world.step();
   }

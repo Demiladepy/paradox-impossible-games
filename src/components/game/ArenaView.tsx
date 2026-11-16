@@ -80,15 +80,42 @@ export function ArenaView({ arena, phantomRef }: ArenaViewProps) {
     else ghostRefs.current.delete(id);
   }, []);
 
-  useFrame(() => {
+  /** 0 = fully there, 1 = fully unmade. Eased per platform so the change reads. */
+  const dissolve = useRef(new Map<string, number>());
+
+  useFrame((_, delta) => {
     const phantom = phantomRef.current;
     if (!phantom) return;
 
     for (const [id, object] of solidRefs.current) {
-      object.visible = !phantom.includes(id);
-    }
-    for (const [id, object] of ghostRefs.current) {
-      object.visible = phantom.includes(id);
+      const target = phantom.includes(id) ? 1 : 0;
+      const current = dissolve.current.get(id) ?? target;
+
+      // Framerate-independent easing. Unmaking is quicker than remaking: the floor should
+      // drop away the instant you look at it, but return with enough weight that you can
+      // see it is safe before you commit to the jump.
+      const halfLife = target > current ? 0.028 : 0.05;
+      const next =
+        Math.abs(target - current) < 0.002
+          ? target
+          : target + (current - target) * Math.pow(2, -delta / halfLife);
+      dissolve.current.set(id, next);
+
+      // Collapse rather than fade: the slab's material is shared across every platform
+      // that uses it, so changing opacity here would dissolve the whole arena at once.
+      const scale = Math.max(0.0001, 1 - next);
+      object.scale.setScalar(scale);
+      object.visible = next < 0.995;
+
+      const ghost = ghostRefs.current.get(id);
+      if (ghost) {
+        ghost.visible = next > 0.005;
+        ghost.scale.setScalar(0.93 + next * 0.07);
+        const material = (ghost as THREE.LineSegments).material;
+        if (material instanceof THREE.LineBasicMaterial) {
+          material.opacity = 0.62 * next;
+        }
+      }
     }
   });
 

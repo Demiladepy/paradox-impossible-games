@@ -9,6 +9,7 @@ import { useGameAudio } from "../../hooks/useGameAudio.ts";
 import { sound } from "../../audio/sound.ts";
 import { ArenaView } from "./ArenaView.tsx";
 import { CONTESTANT_URL, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
+import { PerfPanel, PerfProbe, type PerfSample } from "./PerfReadout.tsx";
 
 /**
  * The game.
@@ -46,7 +47,9 @@ export function GameScreen() {
   const [locked, setLocked] = useState(false);
   const [rivalUrl, setRivalUrl] = useState(CONTESTANT_URL);
   const [muted, setMuted] = useState(false);
+  const [perf, setPerf] = useState<PerfSample | null>(null);
 
+  const pausedRef = useRef(false);
   const snapshotRef = useRef<RoundSnapshot | null>(null);
   const [hud, setHud] = useState<RoundSnapshot | null>(null);
 
@@ -137,6 +140,14 @@ export function GameScreen() {
     if (phase === "briefing" && locked) setPhase("playing");
   }, [phase, locked]);
 
+  // Releasing the mouse mid-round used to leave the simulation running with nobody at the
+  // controls — the timer drained, rivals kept going, and the player came back to a round
+  // they had already lost. Pressing Esc now stops the world.
+  const paused = phase === "playing" && !locked;
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
+
   // Browsers refuse to start an AudioContext outside a user gesture, and taking pointer
   // lock is the one gesture every player makes.
   useEffect(() => {
@@ -168,6 +179,7 @@ export function GameScreen() {
         }}
       >
         <SceneLighting />
+        <PerfProbe onSample={setPerf} />
         {round ? (
           <Simulation
             key={round.challenge.id + roundIndex}
@@ -175,6 +187,7 @@ export function GameScreen() {
             input={input}
             snapshotRef={snapshotRef}
             rivalUrl={rivalUrl}
+            pausedRef={pausedRef}
           />
         ) : null}
       </Canvas>
@@ -200,6 +213,10 @@ export function GameScreen() {
       ) : null}
 
       {phase === "runOver" ? <RunOver history={history} onRestart={startRun} /> : null}
+
+      {paused ? <Paused /> : null}
+
+      <PerfPanel sample={perf} />
 
       {round && !overlayOpen ? <GravityBanner snapshot={hud} /> : null}
       {round ? <GameHud snapshot={hud} roundNumber={roundIndex + 1} total={ROUNDS_PER_RUN} /> : null}
@@ -252,9 +269,11 @@ interface SimulationProps {
   input: InputHandle;
   snapshotRef: React.RefObject<RoundSnapshot | null>;
   rivalUrl: string;
+  /** True while the player has released the mouse. The world holds still. */
+  pausedRef: React.RefObject<boolean>;
 }
 
-function Simulation({ round, input, snapshotRef, rivalUrl }: SimulationProps) {
+function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef }: SimulationProps) {
   const { camera, scene } = useThree();
   const playAudio = useGameAudio();
   const playerRef = useRef<THREE.Group>(null);
@@ -278,6 +297,10 @@ function Simulation({ round, input, snapshotRef, rivalUrl }: SimulationProps) {
 
   useFrame((_, delta) => {
     const raw = input.consume();
+
+    // Paused: keep drawing, but advance nothing. Input is still drained above so a key
+    // held down at the moment of pausing does not fire the instant control returns.
+    if (pausedRef.current) return;
 
     if (input.consumePressed("toggleCamera")) {
       setThirdPerson(round.world.camera.toggleMode() === "third");
@@ -390,6 +413,19 @@ function RivalView({
   );
 }
 
+function Paused() {
+  return (
+    <div className="overlay">
+      <div className="overlay-card">
+        <div className="round-counter">Paused</div>
+        <h2>Round held</h2>
+        <p>Nothing is moving. Your rivals are waiting too.</p>
+        <p className="hint">Click to resume</p>
+      </div>
+    </div>
+  );
+}
+
 /** The countdown before gravity flips. Impossible to miss on purpose. */
 function GravityBanner({ snapshot }: { snapshot: RoundSnapshot | null }) {
   const warning = snapshot?.game.rules.warning;
@@ -462,7 +498,7 @@ function Briefing({
             <kbd>Space</kbd> jump · <kbd>Shift</kbd> sprint
           </li>
           <li>
-            <kbd>V</kbd> camera · <kbd>R</kbd> restart · <kbd>Esc</kbd> release
+            <kbd>V</kbd> camera · <kbd>R</kbd> restart · <kbd>P</kbd> stats · <kbd>Esc</kbd> pause
           </li>
         </ul>
       </div>

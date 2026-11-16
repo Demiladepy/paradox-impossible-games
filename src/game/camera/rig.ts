@@ -32,6 +32,12 @@ export class CameraRig {
   distance: number;
   readonly eyeHeight: number;
 
+  /**
+   * Distance the camera is allowed out to before geometry gets in the way, set by the
+   * simulation each frame. Null when the view is clear.
+   */
+  obstruction: number | null = null;
+
   /** Smoothed point the camera orbits, so the view does not jitter on every step. */
   private pivot: Vec3 = { x: 0, y: 0, z: 0 };
   private initialized = false;
@@ -96,14 +102,20 @@ export class CameraRig {
     };
   }
 
+  /** How far back the camera actually sits, after geometry is taken into account. */
+  get effectiveDistance(): number {
+    return this.obstruction === null ? this.distance : Math.min(this.distance, this.obstruction);
+  }
+
   /** Camera position in world space. */
   get eye(): Vec3 {
     if (this.mode === "first") return this.pivot;
     const forward = this.forward;
+    const distance = this.effectiveDistance;
     return {
-      x: this.pivot.x - forward.x * this.distance,
-      y: this.pivot.y - forward.y * this.distance,
-      z: this.pivot.z - forward.z * this.distance,
+      x: this.pivot.x - forward.x * distance,
+      y: this.pivot.y - forward.y * distance,
+      z: this.pivot.z - forward.z * distance,
     };
   }
 
