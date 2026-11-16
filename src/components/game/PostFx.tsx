@@ -10,6 +10,7 @@ import {
 import { BlendFunction } from "postprocessing";
 import * as THREE from "three";
 import { useMemo } from "react";
+import type { QualitySettings } from "../../game/settings/quality.ts";
 
 /**
  * The post pass.
@@ -25,7 +26,7 @@ import { useMemo } from "react";
  * the floor into a smear.
  */
 
-export function PostFx() {
+export function PostFx({ settings }: { settings: QualitySettings }) {
   // Chromatic aberration wants a Vector2 and will churn a new one every frame otherwise.
   const offset = useMemo(() => new THREE.Vector2(0.00042, 0.00042), []);
 
@@ -36,6 +37,7 @@ export function PostFx() {
       enableNormalPass={false}
       multisampling={0}
     >
+      {settings.bloom ? (
       <Bloom
         intensity={1.35}
         luminanceThreshold={0.62}
@@ -43,19 +45,22 @@ export function PostFx() {
         mipmapBlur
         radius={0.72}
       />
+      ) : null}
+      {settings.chromaticAberration ? (
       <ChromaticAberration
         offset={offset}
         radialModulation
         modulationOffset={0.35}
         blendFunction={BlendFunction.NORMAL}
       />
+      ) : null}
       {/* A light grade. Pushing saturation and contrast after the bloom keeps the teal
           accents vivid against the near-black without the slabs turning muddy — the
           generated PBR maps are fairly desaturated on their own. */}
       <HueSaturation saturation={0.16} hue={0} />
       <BrightnessContrast brightness={-0.015} contrast={0.14} />
       <Vignette eskil={false} offset={0.24} darkness={0.82} />
-      <SMAA />
+      {settings.smaa ? <SMAA /> : null}
     </EffectComposer>
   );
 }

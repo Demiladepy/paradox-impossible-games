@@ -700,3 +700,37 @@ kbd {
     animation: none;
   }
 }
+
+.quality-control {
+  position: absolute;
+  right: 16px;
+  bottom: 52px;
+  display: flex;
+  gap: 4px;
+  z-index: 3;
+}
+
+.quality-control .clip {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+}
+
+.fps-hint {
+  position: absolute;
+  right: 16px;
+  top: 112px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warn);
+  background: rgba(20, 13, 4, 0.82);
+  border: 1px solid var(--warn);
+  border-radius: 7px;
+  padding: 5px 11px;
+  pointer-events: none;
+  z-index: 3;
+}

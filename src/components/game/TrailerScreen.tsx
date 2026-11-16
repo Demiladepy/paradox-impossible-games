@@ -13,6 +13,9 @@ import { ArenaLights } from "./ArenaLights.tsx";
 import { ImpactField, type ImpactEvent } from "./ImpactField.tsx";
 import { CONTESTANT_URL, PLAYER_TINT, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 import { PostFx } from "./PostFx.tsx";
+import type { QualitySettings } from "../../game/settings/quality.ts";
+// The trailer inherits whatever quality the player last chose in game.
+import { loadQuality, QUALITY } from "../../game/settings/quality.ts";
 
 /**
  * Trailer mode — the game films itself.
@@ -43,6 +46,7 @@ export function TrailerScreen() {
   const [progress, setProgress] = useState(0);
   const [rivalUrl, setRivalUrl] = useState(CONTESTANT_URL);
   const [hasLamp, setHasLamp] = useState(false);
+  const settings = QUALITY[loadQuality()];
 
   const director = useMemo(() => new ShotDirector(), []);
 
@@ -100,14 +104,14 @@ export function TrailerScreen() {
       <Canvas
         shadows
         camera={{ fov: 46, near: 0.1, far: 400 }}
-        dpr={[1, 2]}
+        dpr={[1, settings.dpr]}
         gl={{ antialias: true }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.15;
         }}
       >
-        <TrailerLighting />
+        <TrailerLighting shadowMapSize={settings.shadowMapSize} />
         {round ? (
           <CinematicRunner
             key={`${round.challenge.id}-${roundIndex}`}
@@ -116,13 +120,14 @@ export function TrailerScreen() {
             playing={playing}
             rivalUrl={rivalUrl}
             hasLamp={hasLamp}
+            settings={settings}
             onCard={setCard}
             onProgress={setProgress}
             onRoundFinished={() => setRoundIndex((index) => index + 1)}
             onFinished={() => setPlaying(false)}
           />
         ) : null}
-        <PostFx />
+        <PostFx settings={settings} />
       </Canvas>
 
       {/* Letterbox. Costs nothing and makes a screen capture read as footage. */}
@@ -165,7 +170,7 @@ export function TrailerScreen() {
   );
 }
 
-function TrailerLighting() {
+function TrailerLighting({ shadowMapSize }: { shadowMapSize: number }) {
   return (
     <>
       <color attach="background" args={["#04050a"]} />
@@ -177,7 +182,7 @@ function TrailerLighting() {
         intensity={2.6}
         color="#ffffff"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[shadowMapSize, shadowMapSize]}
         shadow-camera-left={-45}
         shadow-camera-right={45}
         shadow-camera-top={45}
@@ -197,6 +202,7 @@ interface RunnerProps {
   playing: boolean;
   rivalUrl: string;
   hasLamp: boolean;
+  settings: QualitySettings;
   onCard: (card: { title: string | null; caption: string | null }) => void;
   onProgress: (progress: number) => void;
   onRoundFinished: () => void;
@@ -209,6 +215,7 @@ function CinematicRunner({
   playing,
   rivalUrl,
   hasLamp,
+  settings,
   onCard,
   onProgress,
   onRoundFinished,
@@ -308,8 +315,12 @@ function CinematicRunner({
   return (
     <Suspense fallback={null}>
       <ArenaView arena={round.world.arena} phantomRef={phantomRef} />
-      <Atmosphere arena={round.world.arena} />
-      <ArenaLights arena={round.world.arena} hasLampAsset={hasLamp} />
+      <Atmosphere arena={round.world.arena} moteCount={settings.moteCount} />
+      <ArenaLights
+        arena={round.world.arena}
+        hasLampAsset={hasLamp}
+        maxLamps={settings.maxLamps}
+      />
       <ImpactField eventsRef={impactsRef} />
       <PlayerView
         ref={playerRef}

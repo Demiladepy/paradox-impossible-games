@@ -14,6 +14,15 @@ import { ImpactField, type ImpactEvent } from "./ImpactField.tsx";
 import { CONTESTANT_URL, PLAYER_TINT, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 import { PerfPanel, PerfProbe, type PerfSample } from "./PerfReadout.tsx";
 import { PostFx } from "./PostFx.tsx";
+import type { QualitySettings } from "../../game/settings/quality.ts";
+import {
+  loadQuality,
+  nextLevelDown,
+  QUALITY,
+  QUALITY_ORDER,
+  saveQuality,
+  type QualityLevel,
+} from "../../game/settings/quality.ts";
 
 /**
  * The game.
@@ -51,8 +60,16 @@ export function GameScreen() {
   const [locked, setLocked] = useState(false);
   const [rivalUrl, setRivalUrl] = useState(CONTESTANT_URL);
   const [hasLamp, setHasLamp] = useState(false);
+  const [quality, setQuality] = useState<QualityLevel>(() => loadQuality());
+  const settings = QUALITY[quality];
+
   const [muted, setMuted] = useState(false);
   const [perf, setPerf] = useState<PerfSample | null>(null);
+
+  // Say something when the frame rate is struggling rather than leaving the player to
+  // work out which of five dials to turn.
+  const lowFramerateHint =
+    perf !== null && perf.fps > 0 && perf.fps < 50 ? nextLevelDown(quality) : null;
 
   const pausedRef = useRef(false);
   const snapshotRef = useRef<RoundSnapshot | null>(null);
@@ -177,14 +194,14 @@ export function GameScreen() {
       <Canvas
         shadows
         camera={{ fov: 62, near: 0.1, far: 400 }}
-        dpr={[1, 1.75]}
+        dpr={[1, settings.dpr]}
         gl={{ antialias: true }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.1;
         }}
       >
-        <SceneLighting />
+        <SceneLighting shadowMapSize={settings.shadowMapSize} />
         <PerfProbe onSample={setPerf} />
         {round ? (
           <Simulation
@@ -195,9 +212,10 @@ export function GameScreen() {
             rivalUrl={rivalUrl}
             pausedRef={pausedRef}
             hasLamp={hasLamp}
+            settings={settings}
           />
         ) : null}
-        <PostFx />
+        <PostFx settings={settings} />
       </Canvas>
 
       {phase === "loading" ? <div className="loading">Designing a round…</div> : null}
@@ -225,9 +243,15 @@ export function GameScreen() {
       {paused ? <Paused /> : null}
 
       <PerfPanel sample={perf} />
+      {lowFramerateHint ? (
+        <div className="fps-hint">
+          {perf?.fps} fps — try {QUALITY[lowFramerateHint].label}
+        </div>
+      ) : null}
 
       {round && !overlayOpen ? <GravityBanner snapshot={hud} /> : null}
       {round ? <GameHud snapshot={hud} roundNumber={roundIndex + 1} total={ROUNDS_PER_RUN} /> : null}
+      <QualityControl level={quality} onChange={(next) => { setQuality(next); saveQuality(next); }} />
       <button
         className="mute"
         aria-pressed={muted}
@@ -244,7 +268,7 @@ export function GameScreen() {
   );
 }
 
-function SceneLighting() {
+function SceneLighting({ shadowMapSize }: { shadowMapSize: number }) {
   return (
     <>
       <color attach="background" args={["#04050a"]} />
@@ -259,7 +283,7 @@ function SceneLighting() {
         intensity={2.4}
         color="#ffffff"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[shadowMapSize, shadowMapSize]}
         shadow-camera-left={-45}
         shadow-camera-right={45}
         shadow-camera-top={45}
@@ -283,9 +307,10 @@ interface SimulationProps {
   /** True while the player has released the mouse. The world holds still. */
   pausedRef: React.RefObject<boolean>;
   hasLamp: boolean;
+  settings: QualitySettings;
 }
 
-function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef, hasLamp }: SimulationProps) {
+function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef, hasLamp, settings }: SimulationProps) {
   const { camera, scene } = useThree();
   const playAudio = useGameAudio();
   const playerRef = useRef<THREE.Group>(null);
@@ -391,8 +416,12 @@ function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef, hasLamp }:
     // the whole subtree unwinds and the frame loop above never gets to run.
     <Suspense fallback={null}>
       <ArenaView arena={round.world.arena} phantomRef={phantomRef} />
-      <Atmosphere arena={round.world.arena} />
-      <ArenaLights arena={round.world.arena} hasLampAsset={hasLamp} />
+      <Atmosphere arena={round.world.arena} moteCount={settings.moteCount} />
+      <ArenaLights
+        arena={round.world.arena}
+        hasLampAsset={hasLamp}
+        maxLamps={settings.maxLamps}
+      />
       <ImpactField eventsRef={impactsRef} />
       <PlayerView
         ref={playerRef}
@@ -460,6 +489,30 @@ function Paused() {
         <p>Nothing is moving. Your rivals are waiting too.</p>
         <p className="hint">Click to resume</p>
       </div>
+    </div>
+  );
+}
+
+/** Quality picker. Sits beside the sound toggle so both are reachable mid-session. */
+function QualityControl({
+  level,
+  onChange,
+}: {
+  level: QualityLevel;
+  onChange: (level: QualityLevel) => void;
+}) {
+  return (
+    <div className="quality-control" onClick={(event) => event.stopPropagation()}>
+      {QUALITY_ORDER.map((option) => (
+        <button
+          key={option}
+          className="clip"
+          aria-pressed={option === level}
+          onClick={() => onChange(option)}
+        >
+          {QUALITY[option].label}
+        </button>
+      ))}
     </div>
   );
 }

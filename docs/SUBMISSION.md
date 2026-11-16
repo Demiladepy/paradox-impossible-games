@@ -88,16 +88,22 @@ On top of that the scene now carries a post pass (bloom, grade, vignette, SMAA),
 point lights, and ~900 drifting motes. All three are worth their cost visually, and all
 three are the first things to trade if the machine you record on struggles.
 
-**If fps sits below 55**, in order of least visual damage:
+**If fps sits below 55**, you no longer need to touch code. The game has a quality
+control, bottom-right beside the sound toggle:
 
-1. Drop the shadow map from 2048 to 1024 in `SceneLighting` — nearly invisible, meaningful
-   saving.
-2. Lower `MAX_LAMPS` in `ArenaLights.tsx` from 5 to 3. Point lights are the most expensive
-   thing added, because every material evaluates all of them per fragment.
-3. Lower `dpr` on the Canvas from 1.75 to 1.25.
-4. Reduce `MOTE_COUNT` in `Atmosphere.tsx` from 900 to 400.
-5. Last resort: drop `<Bloom>`'s `mipmapBlur` or remove `<SMAA>`. Losing bloom entirely
-   would undo most of the visual gain, so trade the others first.
+| Level | dpr | Shadows | Lamps | Motes | SMAA | Bloom |
+| --- | --- | --- | --- | --- | --- | --- |
+| High | 1.75 | 2048 | 5 | 900 | yes | yes |
+| Medium | 1.35 | 1024 | 3 | 450 | no | yes |
+| Low | 1.0 | 512 | 2 | 200 | no | yes |
+
+The order is deliberate: shadow resolution and supersampling go first because neither is
+something a viewer notices in motion, then point lights, which are the most expensive
+thing in the scene — every material evaluates all of them per fragment. **Bloom survives
+to the bottom**, because losing it undoes most of the visual gain.
+
+Press **P** for fps. If it drops under 50 the game says so and names the level to try.
+Your choice is remembered, and the Trailer inherits it.
 
 ## Pre-submission verification
 

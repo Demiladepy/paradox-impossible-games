@@ -16,9 +16,7 @@ import type { ArenaDefinition } from "../../game/arena/types.ts";
  * re-shot frame for frame.
  */
 
-const MOTE_COUNT = 900;
-
-export function Atmosphere({ arena }: { arena: ArenaDefinition }) {
+export function Atmosphere({ arena, moteCount = 900 }: { arena: ArenaDefinition; moteCount?: number }) {
   const points = useRef<THREE.Points>(null);
 
   const { geometry, bounds } = useMemo(() => {
@@ -34,10 +32,10 @@ export function Atmosphere({ arena }: { arena: ArenaDefinition }) {
     }
     const span = { minZ: minZ - 10, maxZ: maxZ + 10 };
 
-    const positions = new Float32Array(MOTE_COUNT * 3);
-    const speeds = new Float32Array(MOTE_COUNT);
+    const positions = new Float32Array(moteCount * 3);
+    const speeds = new Float32Array(moteCount);
 
-    for (let i = 0; i < MOTE_COUNT; i++) {
+    for (let i = 0; i < moteCount; i++) {
       positions[i * 3] = rng.range(-26, 26);
       positions[i * 3 + 1] = rng.range(-14, 24);
       positions[i * 3 + 2] = rng.range(span.minZ, span.maxZ);
@@ -48,7 +46,7 @@ export function Atmosphere({ arena }: { arena: ArenaDefinition }) {
     buffer.setAttribute("position", new THREE.BufferAttribute(positions, 3));
     buffer.setAttribute("aSpeed", new THREE.BufferAttribute(speeds, 1));
     return { geometry: buffer, bounds: span };
-  }, [arena]);
+  }, [arena, moteCount]);
 
   useFrame((_, delta) => {
     const object = points.current;

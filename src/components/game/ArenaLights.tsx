@@ -56,9 +56,11 @@ interface ArenaLightsProps {
   arena: ArenaDefinition;
   /** False until the generated lamp exists, in which case only the light is placed. */
   hasLampAsset: boolean;
+  /** Quality budget. Point lights are the most expensive thing in the scene. */
+  maxLamps?: number;
 }
 
-export function ArenaLights({ arena, hasLampAsset }: ArenaLightsProps) {
+export function ArenaLights({ arena, hasLampAsset, maxLamps = MAX_LAMPS }: ArenaLightsProps) {
   const poolTexture = useMemo(() => createPoolTexture(), []);
   const placements = useMemo(() => {
     const byId = new Map(arena.platforms.map((p) => [p.id, p]));
@@ -69,9 +71,9 @@ export function ArenaLights({ arena, hasLampAsset }: ArenaLightsProps) {
     if (route.length === 0) return [];
 
     // Spread the budget evenly along the route rather than clustering at the start.
-    const step = Math.max(1, Math.floor(route.length / MAX_LAMPS));
+    const step = Math.max(1, Math.floor(route.length / maxLamps));
     const chosen: typeof route = [];
-    for (let i = 0; i < route.length && chosen.length < MAX_LAMPS; i += step) {
+    for (let i = 0; i < route.length && chosen.length < maxLamps; i += step) {
       const platform = route[i];
       if (platform) chosen.push(platform);
     }
@@ -86,7 +88,7 @@ export function ArenaLights({ arena, hasLampAsset }: ArenaLightsProps) {
       },
       surfaceY: surfaceY(platform),
     }));
-  }, [arena]);
+  }, [arena, maxLamps]);
 
   return (
     <group>
