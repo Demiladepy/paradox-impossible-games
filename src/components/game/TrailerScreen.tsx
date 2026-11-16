@@ -10,6 +10,8 @@ import { DEFAULT_TUNING, type LocomotionState } from "../../game/player/controll
 import { ArenaView } from "./ArenaView.tsx";
 import { Atmosphere } from "./Atmosphere.tsx";
 import { ArenaLights } from "./ArenaLights.tsx";
+import { Backdrop } from "./Backdrop.tsx";
+import { ContactShadows, type ShadowTarget } from "./ContactShadows.tsx";
 import { ImpactField, type ImpactEvent } from "./ImpactField.tsx";
 import { CONTESTANT_URL, PLAYER_TINT, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 import { PostFx } from "./PostFx.tsx";
@@ -127,7 +129,7 @@ export function TrailerScreen() {
             onFinished={() => setPlaying(false)}
           />
         ) : null}
-        <PostFx settings={settings} />
+        <PostFx settings={settings} cinematic />
       </Canvas>
 
       {/* Letterbox. Costs nothing and makes a screen capture read as footage. */}
@@ -231,6 +233,7 @@ function CinematicRunner({
   const phantomRef = useRef<string[]>([]);
   const snapshotRef = useRef<RoundSnapshot | null>(null);
   const impactsRef = useRef<ImpactEvent[]>([]);
+  const shadowTargetsRef = useRef<ShadowTarget[]>([]);
   const lastCard = useRef("");
   const announced = useRef(false);
 
@@ -287,10 +290,20 @@ function CinematicRunner({
     upSignRef.current = game.rules.upSign;
     phantomRef.current = game.rules.phantom;
 
+    const targets = shadowTargetsRef.current;
+    targets.length = 0;
+    targets.push({ position: game.player.position, upSign: game.rules.upSign });
+    for (const other of snapshot.opponents) {
+      targets.push({
+        position: { ...other.position, x: other.position.x + other.renderOffsetX },
+        upSign: other.upSign,
+      });
+    }
+
     const rival = snapshot.opponents[0];
     if (rival && rivalRef.current) {
       rivalRef.current.position.set(
-        rival.position.x,
+        rival.position.x + rival.renderOffsetX,
         rival.position.y - FOOT_DROP * rival.upSign,
         rival.position.z,
       );
@@ -315,6 +328,8 @@ function CinematicRunner({
   return (
     <Suspense fallback={null}>
       <ArenaView arena={round.world.arena} phantomRef={phantomRef} />
+      <Backdrop arena={round.world.arena} />
+      <ContactShadows arena={round.world.arena} targetsRef={shadowTargetsRef} />
       <Atmosphere arena={round.world.arena} moteCount={settings.moteCount} />
       <ArenaLights
         arena={round.world.arena}

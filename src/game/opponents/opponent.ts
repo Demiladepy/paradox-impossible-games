@@ -40,6 +40,8 @@ export interface OpponentSnapshot {
   upSign: number;
   /** Seconds it took them to finish, once they have. */
   finishedAt: number | null;
+  /** Sideways shift for drawing only, so the start reads as a line. Decays to zero. */
+  renderOffsetX: number;
 }
 
 /** How hard a rival is to beat. The agent plays perfectly, so the handicap does the work. */
@@ -49,6 +51,17 @@ export interface OpponentSkill {
   /** Seconds of hesitation at the start, so the player is never instantly behind. */
   reactionDelay: number;
 }
+
+/**
+ * Lateral offsets used *only for drawing* at the start.
+ *
+ * Contestants all spawn on the same point, which reads as a rendering bug rather than a
+ * race. The obvious fix — actually moving the rival — was worse: it shifts their whole
+ * line through the zig-zag ascent and they stop being able to climb it. So the offset is
+ * purely visual and decays to nothing as the rival sets off, which means the simulation is
+ * never touched and the start line costs exactly nothing in correctness.
+ */
+const START_LINE_OFFSETS = [1.9, -1.9, 3.6, -3.6];
 
 export const OPPONENT_SKILL: Record<"EASY" | "NORMAL", OpponentSkill> = {
   // Tuned so a competent player wins comfortably and a hesitant one does not.
@@ -68,6 +81,7 @@ export class Opponent {
     arena: ArenaDefinition,
     world: GameWorld,
     private readonly skill: OpponentSkill,
+    private readonly startLineOffset = 0,
   ) {
     this.world = world;
     this.pilot = new Autopilot(arena, world.player.tuning, world.rules.accepted);
@@ -95,7 +109,13 @@ export class Opponent {
       tuning,
     });
 
-    return new Opponent(`rival-${index + 1}`, arena, world, skill);
+    return new Opponent(
+      `rival-${index + 1}`,
+      arena,
+      world,
+      skill,
+      START_LINE_OFFSETS[index % START_LINE_OFFSETS.length] ?? 0,
+    );
   }
 
   /** Step in lockstep with the player's world. */
@@ -131,8 +151,15 @@ export class Opponent {
     const progress =
       s.status === "won" ? 1 : 1 - Math.min(1, s.distanceToExit / this.startDistance);
 
+    // Full at the gun, gone by the time they move — so nothing is ever drawn away from
+    // where it actually is while it matters.
+    const settleIn = Math.max(0.001, this.skill.reactionDelay);
+    const renderOffsetX =
+      this.startLineOffset * Math.max(0, 1 - this.elapsed / settleIn);
+
     return {
       id: this.id,
+      renderOffsetX,
       position: s.player.position,
       facing: s.player.facing,
       locomotion: s.player.locomotion,

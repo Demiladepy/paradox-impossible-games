@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 /**
@@ -13,6 +13,24 @@ function challengeApi(): Plugin {
   return {
     name: "paradox-challenge-api",
     apply: "serve",
+
+    /**
+     * Load .env into process.env for the dev server itself.
+     *
+     * Vite reads .env into `import.meta.env` for *client* code, and deliberately only
+     * exposes VITE_-prefixed keys there. Server-side middleware gets nothing — so the
+     * challenge handler was reading an undefined ANTHROPIC_API_KEY and silently falling
+     * back to the built-in pack on every request, while the CLI (`node --env-file=.env`)
+     * worked perfectly. The game said "no key configured" with the key sitting in .env.
+     */
+    config(_config, { mode }) {
+      const env = loadEnv(mode, process.cwd(), "");
+      for (const [key, value] of Object.entries(env)) {
+        if (process.env[key] === undefined) process.env[key] = value;
+      }
+      return {};
+    },
+
     configureServer(server) {
       server.middlewares.use("/api/challenge", (req, res) => {
         void (async () => {

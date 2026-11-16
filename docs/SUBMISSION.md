@@ -69,6 +69,13 @@ the first three seconds decide whether anyone watches.
 
 ---
 
+## The AI badge should say "AI-designed round"
+
+With a key in `.env`, `npm run dev` now generates live rounds — the badge on the briefing
+card reads **AI-designed round** and the verified line shows the probe's real time. If it
+says *built-in round*, the key is not reaching the server; check `.env` and restart the
+dev server.
+
 ## Check frame rate before you record
 
 This is the one thing that was never measurable during development — the preview pane runs

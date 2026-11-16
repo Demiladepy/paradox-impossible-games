@@ -10,6 +10,8 @@ import { sound } from "../../audio/sound.ts";
 import { ArenaView } from "./ArenaView.tsx";
 import { Atmosphere } from "./Atmosphere.tsx";
 import { ArenaLights } from "./ArenaLights.tsx";
+import { Backdrop } from "./Backdrop.tsx";
+import { ContactShadows, type ShadowTarget } from "./ContactShadows.tsx";
 import { ImpactField, type ImpactEvent } from "./ImpactField.tsx";
 import { CONTESTANT_URL, PLAYER_TINT, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 import { PerfPanel, PerfProbe, type PerfSample } from "./PerfReadout.tsx";
@@ -320,6 +322,7 @@ function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef, hasLamp, s
   const rivalLocomotion = useRef<LocomotionState[]>([]);
   const phantomRef = useRef<string[]>([]);
   const impactsRef = useRef<ImpactEvent[]>([]);
+  const shadowTargetsRef = useRef<ShadowTarget[]>([]);
   const wasGrounded = useRef(true);
   const fallSpeed = useRef(0);
   const rivalUp = useRef<number[]>([]);
@@ -396,11 +399,22 @@ function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef, hasLamp, s
     }
     wasGrounded.current = game.player.grounded;
 
+    // Rebuild in place rather than allocating a fresh array sixty times a second.
+    const targets = shadowTargetsRef.current;
+    targets.length = 0;
+    targets.push({ position: game.player.position, upSign: game.rules.upSign });
+    for (const rival of snapshot.opponents) {
+      targets.push({
+        position: { ...rival.position, x: rival.position.x + rival.renderOffsetX },
+        upSign: rival.upSign,
+      });
+    }
+
     snapshot.opponents.forEach((rival, index) => {
       const rivalGroup = rivalRefs.current[index];
       if (rivalGroup) {
         rivalGroup.position.set(
-          rival.position.x,
+          rival.position.x + rival.renderOffsetX,
           rival.position.y - FOOT_DROP * rival.upSign,
           rival.position.z,
         );
@@ -416,6 +430,8 @@ function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef, hasLamp, s
     // the whole subtree unwinds and the frame loop above never gets to run.
     <Suspense fallback={null}>
       <ArenaView arena={round.world.arena} phantomRef={phantomRef} />
+      <Backdrop arena={round.world.arena} />
+      <ContactShadows arena={round.world.arena} targetsRef={shadowTargetsRef} />
       <Atmosphere arena={round.world.arena} moteCount={settings.moteCount} />
       <ArenaLights
         arena={round.world.arena}

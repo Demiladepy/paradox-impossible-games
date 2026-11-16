@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ARENA_01 } from "../arena/arena-01.ts";
 import { FALLBACK_CHALLENGES } from "../challenges/fallback.ts";
 import { FIXED_TIMESTEP } from "../core/clock.ts";
 import { NO_LOOK } from "../GameWorld.ts";
@@ -25,6 +26,36 @@ describe("Round", () => {
   it("spawns the rivals the challenge asks for", async () => {
     const round = await Round.create(falseFloor());
     expect(round.snapshot().opponents).toHaveLength(1);
+    round.dispose();
+  });
+
+  it("draws rivals beside the player at the gun, without moving them", async () => {
+    const round = await Round.create(falseFloor());
+    const start = round.snapshot().opponents[0]!;
+
+    // Offset is for drawing only: the simulation still has them on the spawn point.
+    expect(Math.abs(start.renderOffsetX)).toBeGreaterThan(1);
+    expect(start.position.x).toBeCloseTo(ARENA_01.spawn.x, 3);
+    round.dispose();
+  });
+
+  it("retires the start-line offset once the rival sets off", async () => {
+    const round = await Round.create(falseFloor());
+    idle(round, 2.5); // EASY reaction delay is 1.6s
+    expect(Math.abs(round.snapshot().opponents[0]!.renderOffsetX)).toBeLessThan(0.01);
+    round.dispose();
+  });
+
+  it("keeps every rival on solid ground at the start", async () => {
+    const challenge = structuredClone(FALLBACK_CHALLENGES[2]!); // two rivals
+    const round = await Round.create(challenge);
+    idle(round, 1.0);
+
+    for (const rival of round.snapshot().opponents) {
+      // Still standing, not falling off the edge of the start pad.
+      expect(rival.status).toBe("running");
+      expect(rival.position.y).toBeGreaterThan(0);
+    }
     round.dispose();
   });
 

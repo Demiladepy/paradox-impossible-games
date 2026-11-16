@@ -5,6 +5,7 @@ import {
   ChromaticAberration,
   HueSaturation,
   BrightnessContrast,
+  DepthOfField,
   SMAA,
 } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
@@ -26,7 +27,18 @@ import type { QualitySettings } from "../../game/settings/quality.ts";
  * the floor into a smear.
  */
 
-export function PostFx({ settings }: { settings: QualitySettings }) {
+export function PostFx({
+  settings,
+  cinematic = false,
+}: {
+  settings: QualitySettings;
+  /**
+   * Trailer only. Depth of field is lovely on a camera that knows where to look and
+   * actively harmful on one the player is steering — a blurred platform is a platform you
+   * cannot judge a jump against.
+   */
+  cinematic?: boolean;
+}) {
   // Chromatic aberration wants a Vector2 and will churn a new one every frame otherwise.
   const offset = useMemo(() => new THREE.Vector2(0.00042, 0.00042), []);
 
@@ -37,6 +49,9 @@ export function PostFx({ settings }: { settings: QualitySettings }) {
       enableNormalPass={false}
       multisampling={0}
     >
+      {cinematic && settings.smaa ? (
+        <DepthOfField focusDistance={0.012} focalLength={0.045} bokehScale={3.2} />
+      ) : null}
       {settings.bloom ? (
       <Bloom
         intensity={1.35}
