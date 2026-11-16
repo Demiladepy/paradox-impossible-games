@@ -105,6 +105,12 @@ export interface GameWorldOptions {
   durationSeconds?: number;
   /** Movement tuning. Opponents run slightly handicapped versions of the player's. */
   tuning?: PlayerTuning;
+  /**
+   * Keep the third-person camera out of the scenery. Costs a raycast per frame, so it is
+   * off unless something is actually drawing this world: the solvability probe, the
+   * tests and every opponent run headless, and none of them have a camera to protect.
+   */
+  cameraCollision?: boolean;
 }
 
 export class GameWorld {
@@ -120,6 +126,7 @@ export class GameWorld {
   private ruleReport: LoadReport = { accepted: [], rejected: [] };
   private readonly objective: ChallengeObjective;
   private readonly durationSeconds: number | null;
+  private readonly cameraCollision: boolean;
 
   /** Mutable views handed to rules each step — no per-step allocation. */
   private readonly playerView: PlayerView;
@@ -132,6 +139,7 @@ export class GameWorld {
     this.rng = new Rng(options.seed ?? arena.id);
     this.objective = options.objective ?? { type: "REACH_EXIT", targetId: arena.exit.id };
     this.durationSeconds = options.durationSeconds ?? null;
+    this.cameraCollision = options.cameraCollision ?? false;
     this.physics = new PhysicsWorld(arena.gravity, FIXED_TIMESTEP);
 
     for (const platform of arena.platforms) {
@@ -246,7 +254,7 @@ export class GameWorld {
    * than a tight corner.
    */
   private clampCameraToGeometry(): void {
-    if (this.camera.mode !== "third") {
+    if (!this.cameraCollision || this.camera.mode !== "third") {
       this.camera.obstruction = null;
       return;
     }

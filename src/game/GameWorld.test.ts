@@ -136,7 +136,7 @@ describe("GameWorld", () => {
 
 describe("camera stays out of the scenery", () => {
   it("pulls the boom in when geometry is behind the player", async () => {
-    const world = await GameWorld.create(ARENA_01, { rules: [] });
+    const world = await GameWorld.create(ARENA_01, { rules: [], cameraCollision: true });
     run(world, NO_INPUT, 60);
     expect(world.camera.obstruction).toBeNull();
 
@@ -151,7 +151,7 @@ describe("camera stays out of the scenery", () => {
   });
 
   it("never pulls the camera closer than arm's length", async () => {
-    const world = await GameWorld.create(ARENA_01, { rules: [] });
+    const world = await GameWorld.create(ARENA_01, { rules: [], cameraCollision: true });
     run(world, NO_INPUT, 60);
     world.camera.pitch = 1.5;
     run(world, NO_INPUT, 2);
@@ -161,7 +161,7 @@ describe("camera stays out of the scenery", () => {
   });
 
   it("does not clamp in first person, where there is no boom", async () => {
-    const world = await GameWorld.create(ARENA_01, { rules: [], cameraMode: "first" });
+    const world = await GameWorld.create(ARENA_01, { rules: [], cameraMode: "first", cameraCollision: true });
     run(world, NO_INPUT, 60);
     world.camera.pitch = 1.2;
     run(world, NO_INPUT, 2);

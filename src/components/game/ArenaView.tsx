@@ -173,16 +173,18 @@ function Platform({ platform, slab, registerSolid, registerGhost }: PlatformProp
       {/* What is left when a rule unmakes it: an outline where the floor used to be, so
           the player can see where to aim once they look away. Hidden by default. */}
       <lineSegments ref={(object) => registerGhost(id, object)} geometry={edges} visible={false}>
-        <lineBasicMaterial color="#ff5f8f" transparent opacity={0.55} />
+        <lineBasicMaterial color="#ff8fb4" transparent opacity={0.9} />
       </lineSegments>
 
       {/* A bright lip on the top edge. Without it, dark platforms read as holes and you
           cannot judge a jump. */}
       <lineSegments position={[0, size.y / 2 + 0.01, 0]} geometry={lipEdges}>
+        {/* Line colours are emissive by nature — whatever is set here is what the bloom
+            pass sees, so these sit deliberately above its luminance threshold. */}
         <lineBasicMaterial
-          color={conditional ? "#5ef2c4" : "#7d92bd"}
+          color={conditional ? "#8dffe4" : "#9fb4e0"}
           transparent
-          opacity={conditional ? 0.95 : 0.8}
+          opacity={conditional ? 1 : 0.9}
         />
       </lineSegments>
     </group>
@@ -261,20 +263,20 @@ function ExitMarker({ arena }: { arena: ArenaDefinition }) {
     <group position={[position.x, position.y, position.z]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.38, 0]}>
         <ringGeometry args={[radius * 0.72, radius, 48]} />
-        <meshBasicMaterial color="#5ef2c4" transparent opacity={0.85} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#9bffe8" transparent opacity={1} side={THREE.DoubleSide} />
       </mesh>
       {/* A tall beam so the objective is visible from the start pad. */}
       <mesh position={[0, 11, 0]}>
         <cylinderGeometry args={[radius * 0.42, radius * 0.42, 22, 20, 1, true]} />
         <meshBasicMaterial
-          color="#5ef2c4"
+          color="#7dffdc"
           transparent
-          opacity={0.1}
+          opacity={0.16}
           side={THREE.DoubleSide}
           depthWrite={false}
         />
       </mesh>
-      <pointLight color="#5ef2c4" intensity={14} distance={14} position={[0, 1.4, 0]} />
+      <pointLight color="#5ef2c4" intensity={22} distance={18} position={[0, 1.4, 0]} />
     </group>
   );
 }

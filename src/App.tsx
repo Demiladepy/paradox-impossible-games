@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { GameScreen } from "./components/game/GameScreen.tsx";
 import { AssetLab } from "./components/AssetLab.tsx";
+import { TrailerScreen } from "./components/game/TrailerScreen.tsx";
 
-type View = "play" | "assets";
+type View = "play" | "trailer" | "assets";
 
 /**
  * Application shell.
@@ -26,6 +27,13 @@ export default function App() {
           </button>
           <button
             className="tab"
+            aria-pressed={view === "trailer"}
+            onClick={() => setView("trailer")}
+          >
+            Trailer
+          </button>
+          <button
+            className="tab"
             aria-pressed={view === "assets"}
             onClick={() => setView("assets")}
           >
@@ -35,7 +43,9 @@ export default function App() {
         <span className="milestone">AI-designed rounds · verified before you play</span>
       </nav>
 
-      <div className="view">{view === "play" ? <GameScreen /> : <AssetLab />}</div>
+      <div className="view">
+        {view === "play" ? <GameScreen /> : view === "trailer" ? <TrailerScreen /> : <AssetLab />}
+      </div>
     </div>
   );
 }

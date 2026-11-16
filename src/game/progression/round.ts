@@ -54,6 +54,8 @@ export class Round {
       rules: challenge.rules,
       objective: challenge.objective,
       durationSeconds: challenge.durationSeconds,
+      // The player's world is the one on screen; the rivals' worlds are never drawn.
+      cameraCollision: true,
     });
 
     const opponents: Opponent[] = [];

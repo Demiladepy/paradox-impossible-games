@@ -10,6 +10,7 @@ import { sound } from "../../audio/sound.ts";
 import { ArenaView } from "./ArenaView.tsx";
 import { CONTESTANT_URL, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 import { PerfPanel, PerfProbe, type PerfSample } from "./PerfReadout.tsx";
+import { PostFx } from "./PostFx.tsx";
 
 /**
  * The game.
@@ -190,6 +191,7 @@ export function GameScreen() {
             pausedRef={pausedRef}
           />
         ) : null}
+        <PostFx />
       </Canvas>
 
       {phase === "loading" ? <div className="loading">Designing a round…</div> : null}
@@ -239,10 +241,10 @@ export function GameScreen() {
 function SceneLighting() {
   return (
     <>
-      <color attach="background" args={["#05060a"]} />
+      <color attach="background" args={["#04050a"]} />
       {/* Fog starting at 26 m faded the back half of a 41 m course into the background —
           you cannot aim a jump at something you cannot see. */}
-      <fog attach="fog" args={["#05060a", 70, 210]} />
+      <fog attach="fog" args={["#04050a", 60, 190]} />
       {/* Generated obsidian is nearly black; without fill it reads as a hole. */}
       <ambientLight intensity={0.35} color="#9fc4ff" />
       <hemisphereLight args={["#8fc6ff", "#141a28", 0.9]} />
@@ -259,7 +261,10 @@ function SceneLighting() {
         shadow-camera-far={90}
         shadow-bias={-0.0005}
       />
-      <directionalLight position={[-16, 8, -22]} intensity={0.85} color="#4bd8ff" />
+      {/* Rim light from behind the course: separates the contestants from the void and
+          gives the bloom a cool edge to pick up. */}
+      <directionalLight position={[-16, 9, -26]} intensity={1.5} color="#49d6ff" />
+      <directionalLight position={[18, 6, -30]} intensity={0.7} color="#ff7a9c" />
     </>
   );
 }

@@ -74,6 +74,8 @@ export class PhysicsWorld {
   private characterBody: RigidBody | null = null;
   private characterCollider: Collider | null = null;
   private controller: KinematicCharacterController | null = null;
+  /** Reused across casts — allocating one per frame churns objects for no reason. */
+  private scratchRay: InstanceType<RapierModule["Ray"]> | null = null;
 
   constructor(gravity: Vec3, timestep: number) {
     this.world = new (R().World)(gravity);
@@ -206,7 +208,9 @@ export class PhysicsWorld {
    * cast would hit them immediately and pin the camera to their back.
    */
   castRay(origin: Vec3, direction: Vec3, maxDistance: number): number | null {
-    const ray = new (R().Ray)(origin, direction);
+    const ray = (this.scratchRay ??= new (R().Ray)(origin, direction));
+    ray.origin = origin;
+    ray.dir = direction;
     const hit = this.world.castRay(
       ray,
       maxDistance,
