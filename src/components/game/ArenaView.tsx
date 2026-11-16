@@ -80,10 +80,18 @@ export function ArenaView({ arena, phantomRef }: ArenaViewProps) {
     else ghostRefs.current.delete(id);
   }, []);
 
+  const registerLip = useCallback((id: string, object: THREE.Object3D | null) => {
+    if (object) lipRefs.current.set(id, object);
+    else lipRefs.current.delete(id);
+  }, []);
+
   /** 0 = fully there, 1 = fully unmade. Eased per platform so the change reads. */
   const dissolve = useRef(new Map<string, number>());
+  const lipRefs = useRef(new Map<string, THREE.Object3D>());
+  const clock = useRef(0);
 
   useFrame((_, delta) => {
+    clock.current += delta;
     const phantom = phantomRef.current;
     if (!phantom) return;
 
@@ -107,6 +115,18 @@ export function ArenaView({ arena, phantomRef }: ArenaViewProps) {
       object.scale.setScalar(scale);
       object.visible = next < 0.995;
 
+      // Conditional platforms pulse gently while solid. Without it the player cannot
+      // tell which ground answers to the rule until it vanishes under them, which is a
+      // lesson learned one death at a time rather than by looking.
+      const lip = lipRefs.current.get(id);
+      if (lip) {
+        const material = (lip as THREE.LineSegments).material;
+        if (material instanceof THREE.LineBasicMaterial) {
+          const pulse = 0.78 + Math.sin(clock.current * 2.1) * 0.22;
+          material.opacity = next > 0.01 ? 0.25 : pulse;
+        }
+      }
+
       const ghost = ghostRefs.current.get(id);
       if (ghost) {
         ghost.visible = next > 0.005;
@@ -128,6 +148,7 @@ export function ArenaView({ arena, phantomRef }: ArenaViewProps) {
           slab={unitSlab}
           registerSolid={registerSolid}
           registerGhost={registerGhost}
+          registerLip={registerLip}
         />
       ))}
       <Decor arena={arena} />
@@ -141,9 +162,10 @@ interface PlatformProps {
   slab: THREE.Group;
   registerSolid: (id: string, object: THREE.Object3D | null) => void;
   registerGhost: (id: string, object: THREE.Object3D | null) => void;
+  registerLip: (id: string, object: THREE.Object3D | null) => void;
 }
 
-function Platform({ platform, slab, registerSolid, registerGhost }: PlatformProps) {
+function Platform({ platform, slab, registerSolid, registerGhost, registerLip }: PlatformProps) {
   const { position, size, id } = platform;
   const conditional = platform.surface === "conditional";
 
@@ -178,7 +200,11 @@ function Platform({ platform, slab, registerSolid, registerGhost }: PlatformProp
 
       {/* A bright lip on the top edge. Without it, dark platforms read as holes and you
           cannot judge a jump. */}
-      <lineSegments position={[0, size.y / 2 + 0.01, 0]} geometry={lipEdges}>
+      <lineSegments
+        ref={(object) => registerLip(id, object)}
+        position={[0, size.y / 2 + 0.01, 0]}
+        geometry={lipEdges}
+      >
         {/* Line colours are emissive by nature — whatever is set here is what the bloom
             pass sees, so these sit deliberately above its luminance threshold. */}
         <lineBasicMaterial

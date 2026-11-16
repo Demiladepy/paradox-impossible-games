@@ -45,6 +45,7 @@ const assets = {
   pillar: trianglesIn("arena-pillar.glb"),
   contestant: trianglesIn("contestant-01-anim.glb"),
   rival: trianglesIn("rival-01-anim.glb"),
+  lamp: trianglesIn("flood-lamp.glb"),
 };
 
 console.log("Per-asset triangles");
@@ -59,17 +60,21 @@ for (const arena of ARENAS) {
   const pillars = decor.filter((d) => d.asset === "arena-pillar").length;
   // Worst case for this arena: the player plus the most rivals any challenge asks for.
   const characters = 3;
+  // ArenaLights hangs at most five lamps, spread along the route.
+  const lamps = Math.min(5, arena.route.length);
 
   const total =
     slabs * assets.slab +
     obelisks * assets.obelisk +
     pillars * assets.pillar +
+    lamps * assets.lamp +
     characters * assets.contestant;
 
   console.log(`\n${arena.name} (${arena.id})`);
   console.log(`  ${slabs} slab platforms      ${(slabs * assets.slab).toLocaleString().padStart(9)}`);
   console.log(`  ${obelisks} obelisk            ${(obelisks * assets.obelisk).toLocaleString().padStart(9)}`);
   console.log(`  ${pillars} pillars            ${(pillars * assets.pillar).toLocaleString().padStart(9)}`);
+  console.log(`  ${lamps} lamps              ${(lamps * assets.lamp).toLocaleString().padStart(9)}`);
   console.log(`  ${characters} characters         ${(characters * assets.contestant).toLocaleString().padStart(9)}`);
   console.log(`  TOTAL                ${total.toLocaleString().padStart(9)} triangles`);
 }

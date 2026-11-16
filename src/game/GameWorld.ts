@@ -53,6 +53,8 @@ export interface PlayerSnapshot {
   locomotion: LocomotionState;
   grounded: boolean;
   speed: number;
+  /** Vertical velocity. The view reads it to size a landing impact. */
+  velocityY: number;
   supportingPlatformId: string | null;
 }
 
@@ -371,6 +373,7 @@ export class GameWorld {
         locomotion: this.player.locomotion,
         grounded: this.player.grounded,
         speed: this.player.speed,
+        velocityY: this.player.velocity.y,
         supportingPlatformId: this.playerView.supportingPlatformId,
       },
       camera: {

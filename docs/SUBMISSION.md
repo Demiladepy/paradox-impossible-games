@@ -79,15 +79,25 @@ Press **P** in game. You get fps, triangles and draw calls straight off the rend
 
 Measured geometry budget (`npm run budget`):
 
-| Arena | Slabs | Scenery | Characters | Total |
-| --- | --- | --- | --- | --- |
-| The Gauntlet | 200,992 | 89,572 | 75,930 | **366,494** |
-| Inversion | 73,088 | 53,148 | 75,930 | **202,166** |
+| Arena | Slabs | Scenery | Lamps | Characters | Total |
+| --- | --- | --- | --- | --- | --- |
+| The Gauntlet | 200,992 | 89,572 | 63,800 | 75,930 | **430,294** |
+| Inversion | 73,088 | 53,148 | 38,280 | 75,930 | **240,446** |
 
-If fps sits below 55 on the machine you are recording from, the cheapest fixes in order:
-drop the shadow map from 2048 to 1024 in `SceneLighting`, remove two pillars from
-`ARENA_01.decor`, or lower `dpr` on the Canvas from 1.75 to 1.25. Any one of them will
-buy headroom without touching gameplay.
+On top of that the scene now carries a post pass (bloom, grade, vignette, SMAA), five
+point lights, and ~900 drifting motes. All three are worth their cost visually, and all
+three are the first things to trade if the machine you record on struggles.
+
+**If fps sits below 55**, in order of least visual damage:
+
+1. Drop the shadow map from 2048 to 1024 in `SceneLighting` — nearly invisible, meaningful
+   saving.
+2. Lower `MAX_LAMPS` in `ArenaLights.tsx` from 5 to 3. Point lights are the most expensive
+   thing added, because every material evaluates all of them per fragment.
+3. Lower `dpr` on the Canvas from 1.75 to 1.25.
+4. Reduce `MOTE_COUNT` in `Atmosphere.tsx` from 900 to 400.
+5. Last resort: drop `<Bloom>`'s `mipmapBlur` or remove `<SMAA>`. Losing bloom entirely
+   would undo most of the visual gain, so trade the others first.
 
 ## Pre-submission verification
 

@@ -9,6 +9,8 @@ import { useGameAudio } from "../../hooks/useGameAudio.ts";
 import { sound } from "../../audio/sound.ts";
 import { ArenaView } from "./ArenaView.tsx";
 import { Atmosphere } from "./Atmosphere.tsx";
+import { ArenaLights } from "./ArenaLights.tsx";
+import { ImpactField, type ImpactEvent } from "./ImpactField.tsx";
 import { CONTESTANT_URL, PLAYER_TINT, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 import { PerfPanel, PerfProbe, type PerfSample } from "./PerfReadout.tsx";
 import { PostFx } from "./PostFx.tsx";
@@ -48,6 +50,7 @@ export function GameScreen() {
   const [error, setError] = useState<string | null>(null);
   const [locked, setLocked] = useState(false);
   const [rivalUrl, setRivalUrl] = useState(CONTESTANT_URL);
+  const [hasLamp, setHasLamp] = useState(false);
   const [muted, setMuted] = useState(false);
   const [perf, setPerf] = useState<PerfSample | null>(null);
 
@@ -61,8 +64,9 @@ export function GameScreen() {
     fetch("/assets/generated/manifest.json")
       .then((res) => (res.ok ? res.json() : null))
       .then((manifest: { entries?: { name: string }[] } | null) => {
-        const has = manifest?.entries?.some((entry) => entry.name === "rival-01-anim");
-        if (has) setRivalUrl(RIVAL_URL);
+        const names = new Set((manifest?.entries ?? []).map((entry) => entry.name));
+        if (names.has("rival-01-anim")) setRivalUrl(RIVAL_URL);
+        setHasLamp(names.has("flood-lamp"));
       })
       .catch(() => {
         /* keep the default contestant */
@@ -190,6 +194,7 @@ export function GameScreen() {
             snapshotRef={snapshotRef}
             rivalUrl={rivalUrl}
             pausedRef={pausedRef}
+            hasLamp={hasLamp}
           />
         ) : null}
         <PostFx />
@@ -277,9 +282,10 @@ interface SimulationProps {
   rivalUrl: string;
   /** True while the player has released the mouse. The world holds still. */
   pausedRef: React.RefObject<boolean>;
+  hasLamp: boolean;
 }
 
-function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef }: SimulationProps) {
+function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef, hasLamp }: SimulationProps) {
   const { camera, scene } = useThree();
   const playAudio = useGameAudio();
   const playerRef = useRef<THREE.Group>(null);
@@ -288,6 +294,9 @@ function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef }: Simulati
   const upSignRef = useRef(1);
   const rivalLocomotion = useRef<LocomotionState[]>([]);
   const phantomRef = useRef<string[]>([]);
+  const impactsRef = useRef<ImpactEvent[]>([]);
+  const wasGrounded = useRef(true);
+  const fallSpeed = useRef(0);
   const rivalUp = useRef<number[]>([]);
   const [thirdPerson, setThirdPerson] = useState(round.world.camera.mode === "third");
 
@@ -343,6 +352,25 @@ function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef }: Simulati
     upSignRef.current = game.rules.upSign;
     phantomRef.current = game.rules.phantom;
 
+    // Remember how fast we were falling: by the time grounded flips true the vertical
+    // velocity has already been zeroed, so the impact would always look feather-light.
+    if (!game.player.grounded) {
+      fallSpeed.current = Math.max(fallSpeed.current, Math.abs(game.player.velocityY));
+    }
+    if (!wasGrounded.current && game.player.grounded) {
+      impactsRef.current.push({
+        position: {
+          x: game.player.position.x,
+          y: game.player.position.y - FOOT_DROP * game.rules.upSign,
+          z: game.player.position.z,
+        },
+        upSign: game.rules.upSign,
+        force: Math.min(1, fallSpeed.current / 14),
+      });
+      fallSpeed.current = 0;
+    }
+    wasGrounded.current = game.player.grounded;
+
     snapshot.opponents.forEach((rival, index) => {
       const rivalGroup = rivalRefs.current[index];
       if (rivalGroup) {
@@ -364,6 +392,8 @@ function Simulation({ round, input, snapshotRef, rivalUrl, pausedRef }: Simulati
     <Suspense fallback={null}>
       <ArenaView arena={round.world.arena} phantomRef={phantomRef} />
       <Atmosphere arena={round.world.arena} />
+      <ArenaLights arena={round.world.arena} hasLampAsset={hasLamp} />
+      <ImpactField eventsRef={impactsRef} />
       <PlayerView
         ref={playerRef}
         locomotionRef={locomotionRef}

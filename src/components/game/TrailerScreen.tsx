@@ -9,6 +9,8 @@ import { Round, type RoundSnapshot } from "../../game/progression/round.ts";
 import { DEFAULT_TUNING, type LocomotionState } from "../../game/player/controller.ts";
 import { ArenaView } from "./ArenaView.tsx";
 import { Atmosphere } from "./Atmosphere.tsx";
+import { ArenaLights } from "./ArenaLights.tsx";
+import { ImpactField, type ImpactEvent } from "./ImpactField.tsx";
 import { CONTESTANT_URL, PLAYER_TINT, PlayerView, RIVAL_URL } from "./PlayerView.tsx";
 import { PostFx } from "./PostFx.tsx";
 
@@ -40,6 +42,7 @@ export function TrailerScreen() {
   });
   const [progress, setProgress] = useState(0);
   const [rivalUrl, setRivalUrl] = useState(CONTESTANT_URL);
+  const [hasLamp, setHasLamp] = useState(false);
 
   const director = useMemo(() => new ShotDirector(), []);
 
@@ -47,9 +50,9 @@ export function TrailerScreen() {
     fetch("/assets/generated/manifest.json")
       .then((res) => (res.ok ? res.json() : null))
       .then((manifest: { entries?: { name: string }[] } | null) => {
-        if (manifest?.entries?.some((entry) => entry.name === "rival-01-anim")) {
-          setRivalUrl(RIVAL_URL);
-        }
+        const names = new Set((manifest?.entries ?? []).map((entry) => entry.name));
+        if (names.has("rival-01-anim")) setRivalUrl(RIVAL_URL);
+        setHasLamp(names.has("flood-lamp"));
       })
       .catch(() => {
         /* keep the default */
@@ -112,6 +115,7 @@ export function TrailerScreen() {
             director={director}
             playing={playing}
             rivalUrl={rivalUrl}
+            hasLamp={hasLamp}
             onCard={setCard}
             onProgress={setProgress}
             onRoundFinished={() => setRoundIndex((index) => index + 1)}
@@ -192,6 +196,7 @@ interface RunnerProps {
   director: ShotDirector;
   playing: boolean;
   rivalUrl: string;
+  hasLamp: boolean;
   onCard: (card: { title: string | null; caption: string | null }) => void;
   onProgress: (progress: number) => void;
   onRoundFinished: () => void;
@@ -203,6 +208,7 @@ function CinematicRunner({
   director,
   playing,
   rivalUrl,
+  hasLamp,
   onCard,
   onProgress,
   onRoundFinished,
@@ -217,6 +223,7 @@ function CinematicRunner({
   const rivalUpRef = useRef(1);
   const phantomRef = useRef<string[]>([]);
   const snapshotRef = useRef<RoundSnapshot | null>(null);
+  const impactsRef = useRef<ImpactEvent[]>([]);
   const lastCard = useRef("");
   const announced = useRef(false);
 
@@ -302,6 +309,8 @@ function CinematicRunner({
     <Suspense fallback={null}>
       <ArenaView arena={round.world.arena} phantomRef={phantomRef} />
       <Atmosphere arena={round.world.arena} />
+      <ArenaLights arena={round.world.arena} hasLampAsset={hasLamp} />
+      <ImpactField eventsRef={impactsRef} />
       <PlayerView
         ref={playerRef}
         locomotionRef={locomotionRef}

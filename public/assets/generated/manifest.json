@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-15T13:28:07.857Z",
+  "updatedAt": "2026-11-16T15:04:13.903Z",
   "entries": [
     {
       "name": "arena-pillar",
@@ -67,6 +67,20 @@
       "createdAt": "2026-11-15T13:10:06.632Z",
       "bytes": 1073576,
       "notes": "Optimised: textures <=1024px WebP, was 10.41 MB."
+    },
+    {
+      "name": "flood-lamp",
+      "kind": "prop",
+      "file": "/assets/generated/flood-lamp.glb",
+      "prompt": "a suspended industrial floodlight rig, dark metal housing with a large glowing warm lamp lens and cables, sci-fi arena stage light, game asset",
+      "style": "cyberpunk",
+      "version": "G1-Turbo",
+      "faceCount": 14000,
+      "taskId": 8160996,
+      "source": "text-to-3d",
+      "createdAt": "2026-11-16T15:03:21.596Z",
+      "bytes": 906580,
+      "notes": "Optimised: textures <=1024px WebP, was 9.40 MB."
     },
     {
       "name": "platform-slab",
