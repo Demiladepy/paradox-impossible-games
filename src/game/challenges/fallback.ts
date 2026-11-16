@@ -100,13 +100,135 @@ export const FALLBACK_CHALLENGES: readonly ChallengeConfig[] = [
     ],
     opponents: { count: 2, difficulty: "NORMAL" },
   },
+
+  {
+    id: "fallback-wrong-way-round",
+    title: "Wrong Way Round",
+    description:
+      "Here the floor needs witnessing. Platforms exist only while you are watching them — look away and you are standing on nothing.",
+    arenaId: "arena-01",
+    objective: { type: "REACH_EXIT", targetId: "exit-01" },
+    durationSeconds: 90,
+    difficulty: 2,
+    rules: [
+      {
+        id: "wwr-gaze",
+        type: "CONDITIONAL_PLATFORM",
+        // The inverse of THE FALSE FLOOR, and it plays completely differently: instead of
+        // crossing blind you must keep your eyes locked on the ground ahead, which means
+        // never looking where the rival is.
+        targetIds: ["step-01", "step-02", "step-03", "step-04"],
+        parameters: {
+          solidWhenObserved: true,
+          coneDegrees: 70,
+          hysteresisDegrees: 12,
+          exemptSupporting: true,
+        },
+        trigger: { type: "PLAYER_CAMERA_DIRECTION" },
+      },
+    ],
+    opponents: { count: 1, difficulty: "EASY" },
+  },
+
+  {
+    id: "fallback-stutter",
+    title: "Stutter",
+    description:
+      "Nothing here cares where you look. The ground keeps its own time, and it is not generous.",
+    arenaId: "arena-01",
+    objective: { type: "REACH_EXIT", targetId: "exit-01" },
+    durationSeconds: 95,
+    difficulty: 1,
+    rules: [
+      {
+        id: "st-blink",
+        type: "OBJECT_STATE",
+        targetIds: ["step-01", "step-02", "step-03", "step-04"],
+        parameters: { periodSeconds: 4.5, dutyCycle: 0.62, stagger: 1.1, startSolid: true },
+        trigger: { type: "TIMER" },
+      },
+    ],
+    opponents: { count: 1, difficulty: "EASY" },
+  },
+
+  {
+    id: "fallback-narrow-margin",
+    title: "Narrow Margin",
+    description:
+      "The floor is touchier than it looks. Barely glance at it and it is gone.",
+    arenaId: "arena-01",
+    objective: { type: "REACH_EXIT", targetId: "exit-01" },
+    durationSeconds: 100,
+    difficulty: 2,
+    rules: [
+      {
+        id: "nm-gaze",
+        type: "CONDITIONAL_PLATFORM",
+        // A wide cone is far crueller than a narrow one: almost anything in front of you
+        // counts as looking, so the only safe gaze is well off to the side.
+        targetIds: ["step-02", "step-03", "step-04", "plaza"],
+        parameters: {
+          solidWhenObserved: false,
+          coneDegrees: 96,
+          hysteresisDegrees: 14,
+          exemptSupporting: true,
+        },
+        trigger: { type: "PLAYER_CAMERA_DIRECTION" },
+      },
+    ],
+    opponents: { count: 1, difficulty: "NORMAL" },
+  },
+
+  {
+    id: "fallback-held-breath",
+    title: "Held Breath",
+    description:
+      "Gravity turns on a count you can hear. Be standing on something when it does.",
+    arenaId: "arena-02",
+    objective: { type: "SURVIVE_TIMER", targetId: "exit-02" },
+    durationSeconds: 60,
+    difficulty: 3,
+    rules: [
+      {
+        id: "hb-gravity",
+        type: "GRAVITY_DIRECTION",
+        targetIds: [],
+        parameters: {
+          intervalSeconds: 5,
+          warnSeconds: 1.8,
+          magnitude: 24,
+          startInverted: false,
+        },
+        trigger: { type: "TIMER" },
+      },
+    ],
+    opponents: { count: 0, difficulty: "EASY" },
+  },
 ];
 
-/** Pick a fallback, preferring one near the requested difficulty. */
+/**
+ * Pick a fallback at the requested difficulty, varying between calls.
+ *
+ * Variety matters more here than anywhere else in the pack. With no API key the fallbacks
+ * *are* the game, and a run that serves the same three rounds every time quietly makes a
+ * liar of the thing on the title card. Rotating through the matching rounds keeps
+ * "no two rounds play the same" true even with the network unplugged.
+ */
+let fallbackCursor = 0;
+
 export function pickFallback(difficulty = 1): ChallengeConfig {
-  const exact = FALLBACK_CHALLENGES.find((c) => c.difficulty === difficulty);
-  if (exact) return exact;
-  const first = FALLBACK_CHALLENGES[0];
-  if (!first) throw new Error("the fallback pack is empty");
-  return first;
+  const matching = FALLBACK_CHALLENGES.filter((c) => c.difficulty === difficulty);
+  const pool = matching.length > 0 ? matching : FALLBACK_CHALLENGES;
+
+  const chosen = pool[fallbackCursor % pool.length];
+  fallbackCursor++;
+  if (!chosen) throw new Error("the fallback pack is empty");
+  return chosen;
+}
+
+/** Deterministic variant, for tests and probes that must not drift between calls. */
+export function fallbackAt(index: number): ChallengeConfig {
+  const chosen = FALLBACK_CHALLENGES[index % FALLBACK_CHALLENGES.length];
+  if (!chosen) throw new Error("the fallback pack is empty");
+  return chosen;
 }

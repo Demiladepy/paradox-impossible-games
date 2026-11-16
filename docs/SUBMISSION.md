@@ -34,8 +34,9 @@ Run `npm run dev`, then take these. They carry the report.
    *"Verified playable — an agent completed this round in X s"* line.
 6. **Asset Lab** — the generated contestant with the skeleton overlay on and the clip list
    visible. This is the proof the Lux3D rig pipeline worked.
-7. **Terminal: `npm run probe:control`** — the rule-aware vs naive comparison. Technical
-   judges will care about this more than any screenshot of the game.
+7. **Terminal: `npm run probe:control`** — five rounds, two agents, rule-aware solves and
+   naive fails every time. Technical judges will care about this more than any screenshot
+   of the game.
 8. **Terminal: `npm run inspect:asset`** — before/after the optimisation pass, for §4.
 
 ---

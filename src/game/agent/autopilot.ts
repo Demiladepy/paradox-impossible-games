@@ -1,7 +1,7 @@
 import { dot, forwardFromAngles, lengthOf, normalize, sub, type Vec3 } from "../core/math.ts";
 import type { ArenaDefinition, PlatformDef } from "../arena/types.ts";
 import { platformSamplePoints } from "../arena/support.ts";
-import { analyseRoute, surfaceY, type GapAnalysis } from "../arena/reach.ts";
+import { analyseRoute, jumpEnvelope, surfaceY, type GapAnalysis } from "../arena/reach.ts";
 import type { PlayerInput, PlayerTuning } from "../player/controller.ts";
 import type { GameRule } from "../rules/types.ts";
 import type { GameSnapshot } from "../GameWorld.ts";
@@ -81,12 +81,24 @@ interface GazePolicy {
   hysteresisDegrees: number;
 }
 
+/** A platform that comes and goes on its own clock, mirrored from OBJECT_STATE. */
+interface BlinkSchedule {
+  periodSeconds: number;
+  dutyCycle: number;
+  stagger: number;
+  startSolid: boolean;
+  index: number;
+}
+
 export class Autopilot {
   private index = 0;
   private readonly byId: Map<string, PlatformDef>;
   private readonly segments: GapAnalysis[];
   private readonly capsuleHalf: number;
   private readonly gaze: GazePolicy;
+  private readonly blink: Map<string, BlinkSchedule>;
+  /** Airtime of a standing jump, for predicting where the floor will be on landing. */
+  private readonly flightTime: number;
 
   private lastJumpStep = -999;
   private step = 0;
@@ -107,6 +119,8 @@ export class Autopilot {
     this.segments = analyseRoute(arena, tuning);
     this.capsuleHalf = tuning.halfHeight + tuning.radius;
     this.gaze = buildGazePolicy(rules);
+    this.blink = buildBlinkSchedules(rules);
+    this.flightTime = jumpEnvelope(tuning, arena.gravity.y).flightTime;
   }
 
   get finished(): boolean {
@@ -163,9 +177,16 @@ export class Autopilot {
     // playing the mechanic rather than ignoring it.
     const directYaw = yawTowards(toTarget);
     this.averting = this.gaze.averse.has(next.id);
+
     const gaze = this.averting
       ? this.avertFrom(next, snapshot.gazeOrigin, directYaw)
-      : { yaw: directYaw, pitch: -0.12 };
+      : this.gaze.required.has(next.id)
+        ? // The mirror case: this platform exists only while watched, so the agent has to
+          // actually look *at* it. Pointing the yaw at it is not enough — a platform you
+          // are standing beside sits well below a level gaze, outside the cone entirely.
+          lookToward(snapshot.gazeOrigin, { x: next.position.x, y: surfaceY(next), z: next.position.z })
+        : { yaw: directYaw, pitch: -0.12 };
+
     setGaze(gaze.yaw, gaze.pitch);
     const yaw = gaze.yaw;
 
@@ -175,7 +196,14 @@ export class Autopilot {
     // looking elsewhere changes that. The only sane play is the one a person would make:
     // stand still and go when the floor is back. Only while grounded — once committed to
     // a jump there is nothing to decide.
-    if (snapshot.player.grounded && snapshot.rules.phantom.includes(next.id)) {
+    //
+    // Being solid *now* is not the question — the question is whether it will still be
+    // there on landing. A blinking platform that looks safe at take-off is exactly how an
+    // agent (or a player) dies with the floor visible beneath them.
+    const landingAt = snapshot.elapsed + this.flightTime;
+    const goneOnArrival = !this.solidAt(next.id, landingAt);
+
+    if (snapshot.player.grounded && (snapshot.rules.phantom.includes(next.id) || goneOnArrival)) {
       this.waiting = true;
       return { forward: 0, right: 0, jump: false, sprint: false };
     }
@@ -311,6 +339,22 @@ export class Autopilot {
     return false;
   }
 
+  /**
+   * Will this platform be solid at `time`?
+   *
+   * Mirrors OBJECT_STATE's own phase maths, so the agent predicts exactly what the rule
+   * will do rather than approximating it. Platforms with no blink schedule are always
+   * solid as far as this is concerned — gaze rules are handled separately.
+   */
+  private solidAt(id: string, time: number): boolean {
+    const schedule = this.blink.get(id);
+    if (!schedule) return true;
+
+    const offset = schedule.startSolid ? 0 : schedule.periodSeconds * schedule.dutyCycle;
+    const phase = (time + offset + schedule.index * schedule.stagger) % schedule.periodSeconds;
+    return phase < schedule.periodSeconds * schedule.dutyCycle;
+  }
+
   /** Snap the waypoint to whichever route platform the player is actually standing on. */
   private advanceWaypointIfArrived(position: Vec3, grounded: boolean): void {
     if (!grounded) return;
@@ -363,6 +407,40 @@ function buildGazePolicy(rules: readonly GameRule[]): GazePolicy {
     }
   }
   return policy;
+}
+
+/** Read OBJECT_STATE rules into a schedule the agent can predict from. */
+function buildBlinkSchedules(rules: readonly GameRule[]): Map<string, BlinkSchedule> {
+  const schedules = new Map<string, BlinkSchedule>();
+
+  for (const rule of rules) {
+    if (rule.type !== "OBJECT_STATE") continue;
+    const periodSeconds = numberOr(rule.parameters["periodSeconds"], 4);
+    const dutyCycle = numberOr(rule.parameters["dutyCycle"], 0.6);
+    const stagger = numberOr(rule.parameters["stagger"], 0);
+    const startSolid = rule.parameters["startSolid"] !== false;
+
+    rule.targetIds.forEach((id, index) => {
+      schedules.set(id, { periodSeconds, dutyCycle, stagger, startSolid, index });
+    });
+  }
+  return schedules;
+}
+
+const numberOr = (value: unknown, fallback: number): number =>
+  typeof value === "number" && Number.isFinite(value) ? value : fallback;
+
+/** Gaze angles that point from `origin` straight at `point`. */
+function lookToward(origin: Vec3, point: Vec3): { yaw: number; pitch: number } {
+  const direction = normalize({
+    x: point.x - origin.x,
+    y: point.y - origin.y,
+    z: point.z - origin.z,
+  });
+  return {
+    yaw: Math.atan2(-direction.x, -direction.z),
+    pitch: Math.asin(Math.max(-1, Math.min(1, direction.y))),
+  };
 }
 
 /** Yaw that looks along a flat direction. Matches forwardFromAngles in core/math. */

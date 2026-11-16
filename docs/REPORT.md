@@ -201,8 +201,19 @@ an agent finished.
 ### 6.1 The probe plays the mechanics
 
 A probe that ignored the rules would pass everything and prove nothing. Ours reads the
-active rules: it averts its gaze from the platform it is crossing to and strafes, waits for
-blinking platforms to return, and refuses gaps no jump can clear.
+active rules and plays them:
+
+- Under **THE FALSE FLOOR** it averts its gaze from the platform it is crossing to, and
+  strafes — because movement is expressed relative to where you are looking, an agent that
+  looks one way and walks another has to resolve its intent onto the forward and strafe
+  axes, exactly as a player's fingers do.
+- Under the **inverse** rule, where platforms exist only while watched, it looks *down at*
+  the ledge it is about to step on. Pointing the yaw at it is not enough: a platform you
+  are standing beside sits well below a level gaze, outside the cone entirely.
+- Under **OBJECT_STATE** it mirrors the rule's own phase maths to ask whether the platform
+  will still be there *when it lands* — not whether it is there now. A blinking platform
+  that looks safe at take-off is exactly how you die with the floor visible beneath you.
+- It refuses gaps no jump can clear, rather than walking into them.
 
 ### 6.2 The control experiment
 
@@ -210,9 +221,18 @@ Every challenge is probed **twice** — once by an agent that knows the rules, o
 does not. If both succeed, the rule is inert and the round is not a challenge:
 
 ```
-The False Floor    rule-aware = SOLVED 11.9s    naive = FAILED (timed out)
-Unmade Ground      rule-aware = SOLVED 11.5s    naive = FAILED (timed out)
+                   rule-aware agent        agent that ignores the rules
+The False Floor    SOLVED  11.9s           FAILED  (timed out, waiting for ground)
+Wrong Way Round    SOLVED  11.8s           FAILED  (eliminated at 2.5s)
+Stutter            SOLVED  16.8s           FAILED  (eliminated at 6.5s)
+Narrow Margin      SOLVED  11.8s           FAILED  (timed out, waiting for ground)
+Unmade Ground      SOLVED  11.5s           FAILED  (timed out, waiting for ground)
 ```
+
+Five rounds, two agents, and the result is clean in every case. Note Stutter's 16.8 s
+against everything else's ~11.8: that round blinks its platforms on a timer, and the extra
+five seconds is the agent *waiting* for the floor to come back. The probe is not racing
+through — it is playing.
 
 **That control test found two real bugs that no type system would catch.**
 
@@ -315,5 +335,5 @@ round, so the generated challenge changes how the world looks as well as how it 
 | Animation clips driving the contestants | 10, retargeted in-place |
 | Automated tests | **109**, all passing |
 | Initial JS bundle | 381 kB gzipped (physics lazy-loaded) |
-| Rounds per run | 3 |
+| Rounds per run | 3, drawn from a pack of 7 verified rounds |
 | Works with no network | Yes |
