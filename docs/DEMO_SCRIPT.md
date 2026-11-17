@@ -59,7 +59,7 @@ becomes harder to understand, it should not be there.
 
 ## Step 4 — Shots and words together
 
-Roughly 55 seconds. Timings are a planning aid, not a rule.
+About a minute. Timings are a planning aid, not a rule.
 
 ### 1 · The claim — 0:00–0:06
 **On screen:** start pad, course ahead, four platforms as glowing outlines. HUD `unmade`
@@ -104,6 +104,40 @@ and lands on the ceiling. Hold on the inversion.
 constant."
 
 ---
+
+---
+
+## The narration, straight through
+
+Every line above, in order, with nothing else. Read it once to hear the length — it should
+come out around 40 seconds spoken, which leaves the rest of the minute as silence over the
+footage. **The silences are deliberate.** Do not fill them.
+
+> Those platforms aren't there. They stop existing while you're looking at them.
+>
+> Look away, and the floor comes back.
+>
+> *(say nothing — let it happen again)*
+>
+> So you cross ground you can't look at.
+>
+> And you're racing someone through it.
+>
+> Every round is designed by an AI — the arena, the rules, the timer. Then the game plays it
+> itself, headless, before you're allowed in. If an agent can't finish it, you never see it.
+>
+> The next round, gravity doesn't stay where you left it.
+>
+> PARADOX. The arena changes. The rules change. Surviving is the only constant.
+
+Two notes on delivery. **Slower than feels natural** — you know what is about to happen on
+screen and the viewer does not, so the pace that feels right to you is too fast for them.
+And **record narration separately from gameplay** if you can; trying to play the gap run
+well while talking is how you get a take with a good line over a bad jump.
+
+If you would rather not narrate at all, every one of those lines works as an on-screen
+caption. Mute, caption, music underneath. A muted autoplay in a feed is the normal case,
+not the exception — so make sure the video still teaches the rule with the sound off.
 
 ## Step 5 — Edit the explanation before the polish
 

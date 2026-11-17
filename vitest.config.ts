@@ -14,7 +14,8 @@ export default defineConfig({
     testTimeout: 45_000,
     hookTimeout: 45_000,
     // The simulations are CPU-bound, so piling on workers makes every one of them slower.
+    // Vitest 4 flattened poolOptions into top-level settings; `maxWorkers` is the thread cap.
     pool: "threads",
-    poolOptions: { threads: { singleThread: false, maxThreads: 4 } },
+    maxWorkers: 4,
   },
 });

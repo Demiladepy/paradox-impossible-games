@@ -1,5 +1,35 @@
 # Build Status
 
+## 17 Nov 2026 — submission prep, and the preview pane finally rendered
+
+Four things happened today, and the third is the one that matters.
+
+1. **Submission copy written.** `docs/SUBMISSION_DESCRIPTION.md` (paste-ready name, tagline,
+   short and full description, the Lux3D pipeline write-up, verified numbers, honest limits)
+   and `docs/SUBMISSION_ANALYSIS.md` (rubric-by-rubric assessment and what to spend the
+   remaining time on). `docs/DEMO_SCRIPT.md` gained a read-aloud narration block.
+2. **Unmade platforms got an area, not just an outline.** They were drawn as one-pixel
+   `lineBasicMaterial` wireframes — the first thing video compression destroys, in the shot
+   the entire demo rests on. They now carry a faint additive footprint fill, kept at 0.17
+   opacity with a slow breath so it reads as a ghost rather than a floor. **Seen working.**
+3. **The preview pane rendered for the first time**, so a great deal that was built-but-unseen
+   is now observed: the grading and atmosphere, the generated assets under the lighting,
+   trailer camera and title cards, the HUD `unmade` line, and a live **AI-designed round**
+   badge with the probe's real verified time. Three distinct generated rounds appeared —
+   *Eyes on the Path*, *Don't Look Down*, *Shy Steps*.
+4. **Frame rate measured at last.** Medium **59.7 fps**, Low **60.5 fps**, both vsync-capped,
+   on a *dev* build inside a throttled pane. Caveat found: changing quality level degrades
+   performance until reload (Medium 59.7 to 50.0 after two switches). Documented, not fixed —
+   the workaround is to pick a level, reload, then record.
+
+Also: cleared the Vitest 4 `poolOptions` deprecation (suite got faster, 4.07s to 2.50s) and
+named the shadow map type explicitly, since three.js removed `PCFSoftShadowMap` and was
+silently falling back while warning on every boot.
+
+Not done: the GitHub push (blocked by the sandbox, command handed to the user), the demo
+recording, the report PDF, the X post.
+
+
 **Updated:** 2026-11-15 · **Milestones 0–4: COMPLETE** · Remaining: live generation run,
 human play-test, demo recording, submission
 

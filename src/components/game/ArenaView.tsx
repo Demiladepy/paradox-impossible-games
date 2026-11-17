@@ -85,9 +85,15 @@ export function ArenaView({ arena, phantomRef }: ArenaViewProps) {
     else lipRefs.current.delete(id);
   }, []);
 
+  const registerGhostFill = useCallback((id: string, object: THREE.Object3D | null) => {
+    if (object) ghostFillRefs.current.set(id, object);
+    else ghostFillRefs.current.delete(id);
+  }, []);
+
   /** 0 = fully there, 1 = fully unmade. Eased per platform so the change reads. */
   const dissolve = useRef(new Map<string, number>());
   const lipRefs = useRef(new Map<string, THREE.Object3D>());
+  const ghostFillRefs = useRef(new Map<string, THREE.Object3D>());
   const clock = useRef(0);
 
   useFrame((_, delta) => {
@@ -136,6 +142,21 @@ export function ArenaView({ arena, phantomRef }: ArenaViewProps) {
           material.opacity = 0.62 * next;
         }
       }
+
+      // The footprint fill. A one-pixel wireframe is the first thing video compression
+      // destroys, and the unmade platform is the shot the whole demo rests on — so the
+      // outline is backed by an area, which survives both compression and a small screen.
+      // It breathes slowly to read as *actively* unmade rather than as a pink floor, and
+      // it is kept faint on purpose: the mechanic fails the moment this looks solid.
+      const fill = ghostFillRefs.current.get(id);
+      if (fill) {
+        fill.visible = next > 0.005;
+        const material = (fill as THREE.Mesh).material;
+        if (material instanceof THREE.MeshBasicMaterial) {
+          const breath = 0.78 + Math.sin(clock.current * 1.7) * 0.22;
+          material.opacity = 0.17 * next * breath;
+        }
+      }
     }
   });
 
@@ -149,6 +170,7 @@ export function ArenaView({ arena, phantomRef }: ArenaViewProps) {
           registerSolid={registerSolid}
           registerGhost={registerGhost}
           registerLip={registerLip}
+          registerGhostFill={registerGhostFill}
         />
       ))}
       <Decor arena={arena} />
@@ -163,9 +185,17 @@ interface PlatformProps {
   registerSolid: (id: string, object: THREE.Object3D | null) => void;
   registerGhost: (id: string, object: THREE.Object3D | null) => void;
   registerLip: (id: string, object: THREE.Object3D | null) => void;
+  registerGhostFill: (id: string, object: THREE.Object3D | null) => void;
 }
 
-function Platform({ platform, slab, registerSolid, registerGhost, registerLip }: PlatformProps) {
+function Platform({
+  platform,
+  slab,
+  registerSolid,
+  registerGhost,
+  registerLip,
+  registerGhostFill,
+}: PlatformProps) {
   const { position, size, id } = platform;
   const conditional = platform.surface === "conditional";
 
@@ -197,6 +227,26 @@ function Platform({ platform, slab, registerSolid, registerGhost, registerLip }:
       <lineSegments ref={(object) => registerGhost(id, object)} geometry={edges} visible={false}>
         <lineBasicMaterial color="#ff8fb4" transparent opacity={0.9} />
       </lineSegments>
+
+      {/* The area the outline encloses, drawn on the plane the surface used to occupy.
+          Additive and depth-write-off so it reads as light rather than material, and so
+          it never occludes the player falling through the hole it marks. */}
+      <mesh
+        ref={(object) => registerGhostFill(id, object)}
+        position={[0, size.y / 2 + 0.012, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        visible={false}
+      >
+        <planeGeometry args={[size.x, size.z]} />
+        <meshBasicMaterial
+          color="#ff8fb4"
+          transparent
+          opacity={0}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
 
       {/* A bright lip on the top edge. Without it, dark platforms read as holes and you
           cannot judge a jump. */}

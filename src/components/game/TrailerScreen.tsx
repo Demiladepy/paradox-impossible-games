@@ -104,7 +104,10 @@ export function TrailerScreen() {
   return (
     <div className="stage trailer">
       <Canvas
-        shadows
+        // three.js removed PCFSoftShadowMap, which is what a bare `shadows` asks for; it
+        // was silently falling back to PCFShadowMap and warning on every boot. Naming the
+        // type we actually get keeps the console clean and the shadows identical.
+        shadows="percentage"
         camera={{ fov: 46, near: 0.1, far: 400 }}
         dpr={[1, settings.dpr]}
         gl={{ antialias: true }}

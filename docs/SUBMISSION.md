@@ -2,6 +2,14 @@
 
 **Deadline: 19 November 2026, 06:00 EST** (12:00 Nigeria time). Feature freeze 18 Nov.
 
+## Companion documents
+
+- **`SUBMISSION_DESCRIPTION.md`** — paste-ready copy: name, tagline, short and full
+  description, how Lux3D was used, innovation paragraph, verified numbers, honest limits.
+- **`SUBMISSION_ANALYSIS.md`** — rubric-by-rubric assessment, the weak link, and what to
+  spend the remaining time on. Read this one before deciding what to build next.
+- **`DEMO_SCRIPT.md`** — the video: one mechanic, shot list, narration.
+
 ## Required
 
 - [ ] **Project report (PDF or PPT).** Content is written: `docs/REPORT.md`. Export it to
@@ -76,13 +84,43 @@ card reads **AI-designed round** and the verified line shows the probe's real ti
 says *built-in round*, the key is not reaching the server; check `.env` and restart the
 dev server.
 
-## Check frame rate before you record
+## Frame rate — measured 17 Nov 2026
 
-This is the one thing that was never measurable during development — the preview pane runs
-as a background page and throttles, so every timing number taken through it is worthless.
-The game now carries the instrument instead.
+It is no longer an unknown. Measured in the browser with `requestAnimationFrame`, on a
+**dev build inside the preview pane** (which throttles), canvas 1280x674 CSS at dpr 1.5:
 
-Press **P** in game. You get fps, triangles and draw calls straight off the renderer.
+| Level | Drawing buffer | fps, fresh load |
+| --- | --- | --- |
+| Medium | 1728 x 909 | **59.7** (vsync cap) |
+| Low | 1280 x 674 | **60.5 / 59.6** |
+| High | 1920 x 1011 | not measured fresh; in-game badge read 35 during trailer playback |
+
+**Medium and Low are vsync-capped even in a dev build in a throttled pane.** A production
+build full-screen will be at least this good. The quality control works, and the in-game
+badge correctly flags a low reading and names the level to try.
+
+### One real caveat — pick a quality, then reload
+
+Changing quality level degrades performance until the page is reloaded. Measured on the
+same scene, pane visible throughout:
+
+```
+Medium, fresh load .................. 59.7 fps
+Low, after one switch ............... 60.5 fps
+Medium, after two switches .......... 50.0 fps   <-- same settings, 16% slower
+after heavy switching + trailer ..... ~30 fps
+```
+
+Something in the quality change is not fully released — most likely render targets or
+shader programs behind the effect composer. It is **not** worth fixing the day before a
+deadline, because the workaround is complete and free:
+
+> **Pick the quality level you want, reload the page, then start recording.**
+
+The choice is remembered in `localStorage`, so it survives the reload. Do not click
+through the levels mid-recording.
+
+Press **P** in game for fps, triangles and draw calls off the renderer.
 
 Measured geometry budget (`npm run budget`):
 
@@ -91,13 +129,6 @@ Measured geometry budget (`npm run budget`):
 | The Gauntlet | 200,992 | 89,572 | 63,800 | 75,930 | **430,294** |
 | Inversion | 73,088 | 53,148 | 38,280 | 75,930 | **240,446** |
 
-On top of that the scene now carries a post pass (bloom, grade, vignette, SMAA), five
-point lights, and ~900 drifting motes. All three are worth their cost visually, and all
-three are the first things to trade if the machine you record on struggles.
-
-**If fps sits below 55**, you no longer need to touch code. The game has a quality
-control, bottom-right beside the sound toggle:
-
 | Level | dpr | Shadows | Lamps | Motes | SMAA | Bloom |
 | --- | --- | --- | --- | --- | --- | --- |
 | High | 1.75 | 2048 | 5 | 900 | yes | yes |
@@ -105,12 +136,9 @@ control, bottom-right beside the sound toggle:
 | Low | 1.0 | 512 | 2 | 200 | no | yes |
 
 The order is deliberate: shadow resolution and supersampling go first because neither is
-something a viewer notices in motion, then point lights, which are the most expensive
-thing in the scene — every material evaluates all of them per fragment. **Bloom survives
-to the bottom**, because losing it undoes most of the visual gain.
-
-Press **P** for fps. If it drops under 50 the game says so and names the level to try.
-Your choice is remembered, and the Trailer inherits it.
+something a viewer notices in motion, then point lights, which are the most expensive thing
+in the scene. **Bloom survives to the bottom**, because losing it undoes most of the visual
+gain.
 
 ## Pre-submission verification
 
