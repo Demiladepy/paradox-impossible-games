@@ -43,7 +43,10 @@ What the form actually asks for, and what to put in each box.
 
 **1. Working demo / promotional video** — *choose one method.*
 
-The game is **live**: <https://demiladepy.github.io/paradox-impossible-games/>
+The game is **live, with real AI generation**: <https://paradox-impossible-games.vercel.app>
+
+Use this URL on the form. (The GitHub Pages copy exists but serves built-in rounds, and
+`github.io` is unreachable on some networks — including the one this was built on.)
 
 Both options are now available, and they are not equal:
 

@@ -391,16 +391,38 @@ because the workaround — choose a level, reload — is complete and free.
 
 ### 8.2 Deployment
 
-The game is deployed as a static build to GitHub Pages by a workflow that runs the
-typecheck and the full test suite *before* it builds, so a deploy cannot carry something a
-milestone would have rejected.
+The game is deployed twice. A GitHub Pages build, from a workflow that runs the typecheck
+and the full test suite *before* it builds, so a deploy cannot carry something a milestone
+would have rejected; and a Vercel build at **https://paradox-impossible-games.vercel.app**,
+which is the one to play, because Vercel can run serverless functions and therefore the
+real generator:
 
-**The deployed build has no live generation, on purpose.** The challenge generator needs an
-Anthropic key, and a public endpoint holding one is an invitation to spend someone else's
-money. Pages serves the built-in pack of seven verified rounds and the briefing card reads
-*built-in round* rather than pretending otherwise. Since the game was built to be complete
-with no network at all, this costs the deployed build nothing but the badge — and the
-honesty of that badge is the same honesty as the "verified playable" line.
+```
+POST /api/challenge  {"difficulty": 2}
+
+source : generated
+title  : "Don't Look Down"
+rules  : CONDITIONAL_PLATFORM, OBJECT_STATE
+probe  : solved in 18.2s - "agent completed the objective in 18.2s"
+```
+
+That is the live model designing a round, the four validation gates accepting it, and the
+probe playing it headless to completion — inside a serverless function, before the page is
+allowed to show it.
+
+**The Pages build has no live generation**, because a static host cannot run the generator
+at all; it serves the built-in pack of seven verified rounds and its briefing card reads
+*built-in round* rather than pretending otherwise. The game was built to be complete with
+no network, so that build is fully playable — it simply loses the badge, and the honesty of
+that badge is the same honesty as the "verified playable" line.
+
+Getting the function to run took one real fix worth recording. Vercel compiles
+`api/challenge.ts` to JavaScript but leaves its import specifiers untouched, and this
+project imports with explicit `.ts` extensions throughout — so every import of `src/` or
+`server/` failed at load with *Cannot find module*. Diagnosing it by importing one module
+at a time showed the Anthropic SDK and Rapier both loaded fine; the problem was purely the
+specifiers. Rather than change the whole codebase's import style to suit one host, esbuild
+bundles the handler into a single self-contained module the function imports.
 
 ---
 
@@ -435,4 +457,4 @@ round, so the generated challenge changes how the world looks as well as how it 
 | Works with no network | Yes |
 | Frame rate | **59.7 fps** Medium, **60.5 fps** Low — both vsync-capped |
 | Geometry budget | 430,294 triangles (The Gauntlet), 240,446 (Inversion) |
-| Deployed | Static build, typecheck + tests gate every deploy |
+| Deployed | <https://paradox-impossible-games.vercel.app> — live generation; typecheck + tests gate every deploy |

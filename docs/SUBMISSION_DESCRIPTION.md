@@ -135,8 +135,8 @@ Stating these costs nothing and buys credibility. Every one is a refusal, not a 
 
 ## Links to supply on the form
 
-- **Playable build** — <https://demiladepy.github.io/paradox-impossible-games/>
-  (built-in verified rounds; live generation needs a server-side key)
+- **Playable build** — <https://paradox-impossible-games.vercel.app> — live AI generation, the briefing card shows the real
+  **AI-designed round** badge and the probe's verified time
 - **Demo video** — see `docs/DEMO_SCRIPT.md`
 - **Source code** — <https://github.com/Demiladepy/paradox-impossible-games>
 - **Report** — `docs/REPORT.md`, exported to PDF with screenshots
