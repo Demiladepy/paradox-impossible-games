@@ -2,6 +2,39 @@
 
 **Deadline: 19 November 2026, 06:00 EST** (12:00 Nigeria time). Feature freeze 18 Nov.
 
+## Deploying with live AI generation (Vercel)
+
+GitHub Pages cannot run the challenge generator — it has no serverless functions — so the
+deployed build there shows *built-in round*. Vercel can, and `api/challenge.ts` is already
+written for it: the same `handleChallengeRequest` the dev server uses, so there is one
+implementation and the key never reaches the browser.
+
+```bash
+npx vercel
+```
+
+```bash
+npx vercel env add ANTHROPIC_API_KEY production
+```
+
+```bash
+npx vercel --prod
+```
+
+That gets a deployed build whose briefing card reads **AI-designed round** with a real
+probe time — which is the single most impressive thing this project does, in front of a
+judge, without them installing anything.
+
+**Know what you are accepting.** The endpoint is public and unauthenticated: every call
+spends credit on that key, and nothing stops a stranger calling it in a loop. For a
+two-day judging window that is a normal trade. **Rotate the key once judging closes** —
+it needs rotating anyway, since it was pasted into a chat.
+
+If you would rather not take that trade, the Pages build is already live and honest about
+what it is.
+
+---
+
 ## The submission form, field by field
 
 What the form actually asks for, and what to put in each box.

@@ -102,6 +102,7 @@ three-minute one.
 | `rival-01` | `8015374/470/750` | text-to-3D `G1-Turbo` → rig → retarget | Your opponent |
 | `exit-obelisk` | `8015028` | text-to-3D `G1-Turbo`, 110s | Marks the exit in both arenas |
 | `arena-pillar` | `8015029` | text-to-3D `G1-Turbo`, 139s | Scenery framing the courses |
+| `flood-lamp` | `8160996` | text-to-3D `G1-Turbo` | The practical lights above both arenas |
 
 Every asset is recorded in `public/assets/generated/manifest.json` with its prompt, task id,
 version, face count and date. **Every model in the game is traceable to the prompt that made
@@ -139,10 +140,13 @@ glTF extension:
 | --- | --- | --- | --- |
 | contestant-01-anim.glb | 20.98 MB | **1.89 MB** | −91% |
 | contestant-01-rigged.glb | 20.31 MB | **1.42 MB** | −93% |
+| rival-01-anim.glb | 18.24 MB | **1.73 MB** | −90% |
+| rival-01-rigged.glb | 17.57 MB | **1.26 MB** | −93% |
 | platform-slab.glb | 12.95 MB | **1.36 MB** | −89% |
-| exit-obelisk.glb | 10.41 MB | **1.02 MB** | −90% |
 | arena-pillar.glb | 10.43 MB | **1.18 MB** | −89% |
-| **Total** | **75.08 MB** | **6.89 MB** | **−91%** |
+| exit-obelisk.glb | 10.41 MB | **1.02 MB** | −90% |
+| flood-lamp.glb | 9.40 MB | **0.86 MB** | −91% |
+| **Total** | **120.29 MB** | **10.75 MB** | **−91%** |
 
 All 10 animation clips, the skin and the 54-node skeleton were verified intact afterwards —
 not assumed.
@@ -296,6 +300,43 @@ decided by someone else's eyes. Giving each contestant their own copy is fairer,
 player's simulation untouched, and for a game called PARADOX is the more interesting answer:
 you are not racing through the same arena, you are racing through your own version of it.
 
+### 7.1 The game films itself
+
+The same separation pays off a second time. Because the agent can play without a renderer,
+it can equally play *with* one while a second camera — entirely independent of the player's
+— shoots it to a typed shot list. Trailer mode is that: a `ShotDirector` consuming plain
+data (`orbit`, `track`, `dolly`, `rise`, `wide`), title cards, and no one at the keyboard.
+
+The cinematic camera is deliberately **not** the gaze. The rules read the *player's* line of
+sight, so a camera that drove it would unmake the floor under the agent and the trailer
+would film a death.
+
+One shot in it is not decoration. A montage shows that a game looks good; it cannot teach a
+rule, because nobody in it ever deliberately looks at a platform. So the game performs the
+mechanic on a fixed schedule: stare until the floor dissolves, hold, look away, hold while
+it returns — twice, because the repetition is the proof. The camera stands off to the side
+of the line between character and platform; filming over the shoulder would turn the
+platform out of frame exactly as the head turns away, and the viewer would never see the
+thing they are being told to watch.
+
+It is verified like everything else here — against the real rule engine, not a mock:
+
+```
+Target platform: step-01        Standing on: start-pad
+
+phase                                  intent     unmade   verdict
+THE GROUND AHEAD IS SOLID              solid          0%   PASS
+LOOK AT IT, AND IT STOPS EXISTING      unmade        87%   PASS
+LOOK AWAY, AND IT COMES BACK           solid         12%   PASS
+GONE AGAIN                             unmade        84%   PASS
+SO YOU CROSS WHAT YOU CANNOT WATCH     solid         15%   PASS
+
+Agent survived the beat: yes
+```
+
+The percentages are not 100 because the head turn eases rather than snapping — the platform
+changes state partway through each phase, which is the point.
+
 ---
 
 ## 8. Architecture
@@ -313,7 +354,7 @@ Nothing crosses these boundaries. **The frame loop never calls a network. The LL
 touches physics. No API key ever reaches the browser.**
 
 `src/game/**` is plain TypeScript — no DOM, no React, no three.js — which is why the same
-code can be driven headless by the probe and by 103 tests in plain Node. We deliberately
+code can be driven headless by the probe and by 135 tests in plain Node. We deliberately
 used raw Rapier instead of the React binding so that would be possible.
 
 | Layer | Choice |
@@ -325,6 +366,41 @@ used raw Rapier instead of the React binding so that would be possible.
 | 3D content | **Aholo Lux3D** |
 | Challenge design | Claude (`claude-opus-5-5`), server-side only |
 | Audio | Synthesised in-browser — no audio files |
+
+### 8.1 Performance
+
+Measured in-browser with `requestAnimationFrame`, on a dev build, canvas 1280x674 at
+dpr 1.5:
+
+| Quality | Drawing buffer | Frame rate |
+| --- | --- | --- |
+| Medium | 1728 x 909 | **59.7 fps** (vsync cap) |
+| Low | 1280 x 674 | **60.5 fps** (vsync cap) |
+
+The game ships its own instrument — **P** shows fps, triangles and draw calls straight off
+the renderer — and a three-level quality control. The order the levels shed work is
+deliberate: shadow resolution and supersampling first, because neither is noticeable in
+motion, then point lights, which are the most expensive thing in the scene since every
+material evaluates all of them per fragment. Bloom survives to the bottom level, because
+losing it undoes most of the visual gain.
+
+One honest caveat, found by measuring rather than assuming: changing quality level degrades
+performance until the page is reloaded (Medium falls from 59.7 to 50.0 fps after two
+switches). Something in the swap is not fully released. It is documented rather than fixed,
+because the workaround — choose a level, reload — is complete and free.
+
+### 8.2 Deployment
+
+The game is deployed as a static build to GitHub Pages by a workflow that runs the
+typecheck and the full test suite *before* it builds, so a deploy cannot carry something a
+milestone would have rejected.
+
+**The deployed build has no live generation, on purpose.** The challenge generator needs an
+Anthropic key, and a public endpoint holding one is an invitation to spend someone else's
+money. Pages serves the built-in pack of seven verified rounds and the briefing card reads
+*built-in round* rather than pretending otherwise. Since the game was built to be complete
+with no network at all, this costs the deployed build nothing but the badge — and the
+honesty of that badge is the same honesty as the "verified playable" line.
 
 ---
 
@@ -357,3 +433,6 @@ round, so the generated challenge changes how the world looks as well as how it 
 | Initial JS bundle | 381 kB gzipped (physics lazy-loaded) |
 | Rounds per run | 3, drawn from a pack of 7 verified rounds |
 | Works with no network | Yes |
+| Frame rate | **59.7 fps** Medium, **60.5 fps** Low — both vsync-capped |
+| Geometry budget | 430,294 triangles (The Gauntlet), 240,446 (Inversion) |
+| Deployed | Static build, typecheck + tests gate every deploy |

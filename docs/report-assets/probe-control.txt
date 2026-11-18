@@ -1,0 +1,9 @@
+
+> paradox@0.1.0 probe:control
+> node --import tsx scripts/probe-control.ts
+
+The False Floor    aware=SOLVED  11.9s   naive=FAILED  90.0s  (agent ran out of its 90s timer, waiting for ground that never came back, heading for "step-01")
+Unmade Ground      aware=SOLVED  11.5s   naive=FAILED  110.0s  (agent ran out of its 110s timer, waiting for ground that never came back, heading for "step-02")
+Wrong Way Round    aware=SOLVED  11.8s   naive=FAILED  2.5s  (agent was eliminated after 2.5s while heading for "step-01")
+Stutter            aware=SOLVED  16.8s   naive=FAILED  6.5s  (agent was eliminated after 6.5s while heading for "step-03")
+Narrow Margin      aware=SOLVED  11.8s   naive=FAILED  100.0s  (agent ran out of its 100s timer, waiting for ground that never came back, heading for "step-02")

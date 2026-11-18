@@ -1,5 +1,34 @@
 # Build Status
 
+## 18 Nov 2026 — the report becomes a real document
+
+- **Screenshots are in.** Seven captures placed through the report: the unmade platform as
+  the cover, the arena wide and at ground level, Asset Lab with full per-asset metadata, a
+  live briefing card showing the **AI-designed round** badge, the gravity arena, trailer
+  mode.
+- **Command output is rendered as text, not photographed.** `probe:control` and `budget`
+  appear as dark terminal cards built from their real captured bytes, so they stay sharp
+  at any zoom — a photographed terminal is the one image guaranteed to be unreadable in
+  print.
+- **The page gaps are gone.** They came from forcing a break before every numbered
+  section, which left half-empty pages throughout. Content now flows; only the cover takes
+  a page of its own, headings carry `break-after: avoid`, and single screenshots are held
+  to 74% width so a heading-plus-figure block stays short enough to fit where it belongs.
+- **Three inconsistencies the layout exposed, now fixed.** §4.2's optimisation table
+  totalled 75.08 MB against the Numbers section's 120.29 MB — it only ever listed five of
+  the eight files. §3.2 was missing the flood lamp. §8 still claimed 103 tests. All
+  recomputed from `manifest.json`, which is the evidence.
+- **New content:** §7.1 the game films itself (trailer, teaching beat, `probe:demo`
+  output), §8.1 performance (the measured fps and the quality ladder), §8.2 deployment.
+
+13 pages, 0.82 MB, no placeholders left.
+
+- **`api/challenge.ts`** added so Vercel can serve the generator. Pages cannot run
+  functions, so the Pages build is honest about being built-in rounds; Vercel would give a
+  live **AI-designed round** badge in front of a judge. Instructions and the trade-off are
+  in `docs/SUBMISSION.md`.
+
+
 ## 18 Nov 2026 — deployed to GitHub Pages
 
 The game is served statically from GitHub Pages via `.github/workflows/deploy.yml`, which

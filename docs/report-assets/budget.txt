@@ -1,0 +1,20 @@
+  pillar          18,212
+  contestant      25,310
+  rival           23,708
+  lamp            12,760
+
+The Gauntlet (arena-01)
+  11 slab platforms        200,992
+  1 obelisk               16,724
+  4 pillars               72,848
+  5 lamps                 63,800
+  3 characters            75,930
+  TOTAL                  430,294 triangles
+
+Inversion (arena-02)
+  4 slab platforms         73,088
+  1 obelisk               16,724
+  2 pillars               36,424
+  3 lamps                 38,280
+  3 characters            75,930
+  TOTAL                  240,446 triangles
