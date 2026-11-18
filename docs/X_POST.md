@@ -1,136 +1,127 @@
 # The X post
 
-This goes out on a main account, so it is written to survive a feed rather than to satisfy
-a submission checklist. The hashtag earns the bonus point; the first line earns the views.
+Main account, deadline day. Written to survive a feed, not to satisfy a checklist.
 
 ---
 
-## The rule that decides everything
+## Who to tag — verified, not guessed
 
-**Lead with the weird thing, in plain words, in under twelve.** Not what you built, not
-what you used, not who it is for. The strangest true sentence about the project.
+| Handle | Who | Evidence |
+| --- | --- | --- |
+| **@ManycoreTech** | The host. Runs the hackathon and makes Aholo Lux3D. | `x.com/ManycoreTech` — posting the event essentials and the Lux3D launch |
+| **@Scobleizer** | Robert Scoble — **judge** | "I'm judging the 2026 Aholo Global 3D AI Hackathon, hosted by @ManycoreTech" |
+| **@Grummz** | Mark Kern — **judge** | "I'm proud to announce I'm an official judge for the @ManycoreTech Aholo 3D AI Hackathon" |
 
-People do not scroll past "the floor stops existing when you look at it". They scroll past
-"Excited to share my submission for the #Manycorehackathon 🚀".
+**Hashtag: `#Manycorehackathon`** — confirmed on aholo.ai/hackathon and on the submission
+form. Exactly that casing. It is a bonus point; do not misspell it.
+
+There is no separate Aholo handle in official use — everything routes through
+**@ManycoreTech**. Do not invent one.
+
+### My recommendation
+
+**Tag @ManycoreTech in the main post. Nothing else.** They are the host, they amplify
+entries, and it reads as participation.
+
+**Put the judges in the technical reply, not the headline.** Tagging two judges in the
+first line of your own submission post reads as farming, and both of these are people with
+large followings who see that every day. In a reply, under a specific technical detail,
+the same tag reads as "this is the bit you'd find interesting" — which is true, and far
+more likely to get a response.
+
+If you would rather not tag judges at all, you lose very little: they are both watching the
+hashtag.
 
 ---
 
-## Post 1 — the recommended one
+## The post
 
 > I made a game where the floor stops existing when you look at it.
 >
 > Look away and it comes back. That's how you cross.
 >
 > An AI writes the physics for each round — then plays it itself, headless, to check a
-> human could actually survive it. If the agent can't finish, you never see the round.
+> human could survive it. If the agent can't finish, you never see the round.
 >
-> Every character and prop is AI-generated. #Manycorehackathon
-
-**Why this one.** The first line is a complete, concrete, strange idea with no jargon. The
-second line delivers the payoff immediately. Only then does it earn the right to explain
-the clever part. The build details come last because nobody has ever been stopped
-mid-scroll by a tech stack.
-
-Attach the video. Do not put a link in this post — see below.
-
-## Post 2 — shorter, punchier
-
-> The floor only exists when you're not looking at it.
+> Every character and prop is AI-generated with @ManycoreTech Aholo Lux3D.
 >
-> So you cross it blind.
->
-> An AI designed this round. Then it played it itself to make sure it was survivable.
 > #Manycorehackathon
 
-## Post 3 — if you want the AI angle leading
+Attach the video, or the four images below. **No link in this post** — see the thread.
 
-> Everyone's using AI to generate 3D models.
->
-> I used it to generate the laws of physics.
->
-> Every round, new rules. One round the floor obeys your gaze. The next, gravity turns
-> over and you finish on the ceiling. #Manycorehackathon
+### Why this opener
 
-Weaker than Post 1 as an opener — it starts with a claim *about a category* rather than a
-thing you can picture — but it is the right one if you want the reply guys arguing about
-generative AI, which is its own kind of reach.
+The first line is concrete, strange and jargon-free, and you can picture it. The second
+delivers the payoff before anyone has to decide whether to care. Only then does it earn the
+right to explain the clever part.
+
+Compare: *"Excited to share my submission for the #Manycorehackathon 🚀"*. Nobody has ever
+stopped scrolling for a tech stack.
 
 ---
 
-## The visual
+## The thread
 
-**The video is the graphic.** Do not post a static image when you have fifty seconds of
-this. Autoplay in-feed is the whole advantage.
+**Reply 1 — the link, and the thing that can't be faked:**
 
-Three rules for the upload:
-
-1. **The first frame must be the strangest frame.** X autoplays muted from frame one. If
-   frame one is a logo or a black fade, the post is dead. Start on the gap run with the
-   platforms visibly unmade — bright outlines over a hole where a floor should be.
-2. **Burn in captions.** Muted autoplay is the normal case. Every line of the demo script
-   works as an on-screen caption; the trailer already carries its own. Check they are
-   legible at phone size before posting.
-3. **Keep it under 60 seconds** and post it natively. Never link out to YouTube in the
-   main post — X suppresses it and the click-through is brutal.
-
-### Which clip
-
-Use the **teaching beat** from Trailer mode as the opening seconds: the agent stares at a
-platform until it dissolves, then looks away and it returns. That shot exists specifically
-because it is the one thing that explains the game without narration, and it was built to
-be filmed hands-off.
-
-### If you want a still as well
-
-Post it as the **second** image, never the first. The strongest candidates, in order:
-
-1. The gap run mid-effect — unmade platforms as glowing outlines, HUD showing
-   `unmade: step-01 … step-04`.
-2. The same frame with the gaze turned away, platforms solid. Posted as a pair, these two
-   images teach the entire game with no caption at all.
-3. The inversion — the contestant standing on the ceiling.
-
----
-
-## Thread, not a single post
-
-Put the link in a **reply**, not the main post. X demotes posts with outbound links, and a
-reply carries no such penalty.
-
-**Reply 1:**
-
-> Built for the Manycore Aholo Global 3D AI Hackathon.
+> It's live, and the generation is real — not a recording:
+> https://paradox-impossible-games.vercel.app
 >
-> Every character, prop and platform is Aholo Lux3D: text-to-3D → auto-rigging →
-> animation retargeting. Ten clips driving each contestant.
+> Every round you play was designed by a model a few seconds earlier, validated, and then
+> played to completion by an agent before you were let in.
 >
-> Source: github.com/Demiladepy/paradox-impossible-games
+> Source: https://github.com/Demiladepy/paradox-impossible-games
 
-**Reply 2 — the detail that makes engineers reply:**
+**Reply 2 — the detail engineers quote-tweet:**
 
 > The part I didn't expect to need: I probe every round twice. Once with an agent that
 > knows the rules, once with an agent that ignores them.
 >
-> If both finish, the rule did nothing and the round gets thrown out.
+> If both finish, the rule did nothing and the round is thrown out.
 >
-> It caught two mechanics I'd have sworn were working.
+> It caught two mechanics I'd have sworn were working. @Scobleizer @Grummz
 
-That second reply is the one that gets quote-tweeted by people who build things. It is a
-specific, falsifiable, slightly humbling detail — which is the kind of thing that travels
-much further than a feature list.
+That reply is specific, falsifiable and slightly humbling, which travels much further than
+a feature list. It is also the natural place for a judge tag.
+
+**Links go in replies, never the main post.** X demotes posts with outbound links; a reply
+carries no such penalty.
 
 ---
 
-## Timing
+## The images
 
-Post when US tech X is awake: **roughly 14:00–17:00 Nigeria time** (9am–noon ET) on a
-weekday. Reply to your own post with the link within a minute or two, then leave it alone.
+Four, in `docs/x-post-images/`, in this order:
 
-Do not edit the post after it goes out; it resets the reach.
+1. **`1-the-hook-unmade-floor.jpg`** — a platform mid-unmake. This is the whole game in one
+   frame and it must be first.
+2. **`2-arena.jpg`** — the arena at ground level, showing the generated assets lit.
+3. **`3-ai-designed-round.jpg`** — the briefing card: the **AI-designed round** badge, the
+   generated rules line, and the probe's verified time.
+4. **`4-lux3d-asset-lab.jpg`** — Asset Lab, with each asset's Lux3D task id, prompt and
+   triangle count. This is the one that proves the Lux3D claim rather than asserting it.
+
+**But prefer the video if you have it.** Fifty seconds of autoplay beats four stills, and
+Trailer mode now opens with the beat that demonstrates the floor rule hands-off — which is
+the single thing a still cannot do. Images are the good fallback, not the better option.
+
+If you post the video: **burn in captions** (muted autoplay is the normal case), make sure
+the **first frame is the unmade platform**, keep it under 60 seconds, and upload natively.
+
+### Doing both
+
+You said you were thinking of posting both. That works, in this order: **video in the main
+post, images in Reply 1 under the link.** Do not split them across two separate posts —
+you would be competing with yourself for the same audience in the same hour.
+
+---
 
 ## Before you hit post
 
-- Watch the video **muted, on your phone**. If you cannot tell what is happening, the post
-  will not work, however good the writing is.
-- Check `#Manycorehackathon` is spelled exactly that way — it is the bonus point.
-- Submit **one** post link on the form, as the brief says.
+- Watch it **muted on your phone**. If you can't tell what's happening, the post won't work
+  however good the writing is.
+- `#Manycorehackathon` — exact spelling.
+- Post around **14:00–17:00 WAT** (9am–noon ET) to catch US tech X. Add the reply within a
+  minute or two, then leave it alone.
+- Don't edit after posting; it resets reach.
+- **One post link per project** on the submission form.
