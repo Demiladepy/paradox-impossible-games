@@ -32,7 +32,10 @@ jobs:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      # Not `npm ci`: the lock file is generated on Windows and cannot carry the
+      # Linux-only optional packages npm resolves on this runner, so a clean install
+      # fails before it starts. The typecheck and test steps below are the real guard.
+      - run: npm install --no-audit --no-fund
 
       # The same gates that guard a milestone locally guard a deploy.
       - run: npm run typecheck
