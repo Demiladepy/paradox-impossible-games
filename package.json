@@ -6,7 +6,7 @@
   "description": "PARADOX: THE IMPOSSIBLE GAMES - an AI-generated 3D survival game",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && node --import tsx scripts/build-api.ts && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -21,7 +21,8 @@
     "probe:control": "node --import tsx scripts/probe-control.ts",
     "budget": "node --import tsx scripts/budget.ts",
     "probe:demo": "node --import tsx scripts/probe-demonstration.ts",
-    "report": "node --import tsx scripts/build-report.ts"
+    "report": "node --import tsx scripts/build-report.ts",
+    "build:api": "node --import tsx scripts/build-api.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

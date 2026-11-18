@@ -19,7 +19,10 @@
  * Be aware of what that means: the endpoint is public and every call spends credit on the
  * key you gave it. For a hackathon window that is usually fine. Rotate the key afterwards.
  */
-import { handleChallengeRequest } from "../server/challenge-handler.ts";
+// The generated bundle, not the source. Vercel leaves `.ts` import specifiers untouched
+// and does not ship the files behind them, so the handler is bundled by `npm run build`
+// into a single self-contained module that sits beside this file. See scripts/build-api.ts.
+import { handleChallengeRequest } from "./_handler.mjs";
 
 /**
  * Typed loosely on purpose.
