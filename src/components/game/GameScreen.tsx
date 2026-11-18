@@ -17,6 +17,7 @@ import { CONTESTANT_URL, PLAYER_TINT, PlayerView, RIVAL_URL } from "./PlayerView
 import { PerfPanel, PerfProbe, type PerfSample } from "./PerfReadout.tsx";
 import { PostFx } from "./PostFx.tsx";
 import type { QualitySettings } from "../../game/settings/quality.ts";
+import { assetUrl } from "../../asset-url.ts";
 import {
   loadQuality,
   nextLevelDown,
@@ -80,7 +81,7 @@ export function GameScreen() {
   // Use the rival character only once it exists on disk — a missing GLB would suspend
   // forever behind the Canvas boundary and the game would simply never appear.
   useEffect(() => {
-    fetch("/assets/generated/manifest.json")
+    fetch(assetUrl("/assets/generated/manifest.json"))
       .then((res) => (res.ok ? res.json() : null))
       .then((manifest: { entries?: { name: string }[] } | null) => {
         const names = new Set((manifest?.entries ?? []).map((entry) => entry.name));

@@ -64,6 +64,15 @@ function challengeApi(): Plugin {
 }
 
 export default defineConfig({
+  /**
+   * Where the site is served from.
+   *
+   * Root in development and on any host that serves the app at `/`. GitHub Pages serves a
+   * project site from `/<repo>/`, so the deploy workflow sets PARADOX_BASE and every asset
+   * URL follows it through `src/asset-url.ts`. Getting this wrong does not fail the build
+   * — it ships an arena with no geometry in it, which is a far worse way to find out.
+   */
+  base: process.env["PARADOX_BASE"] ?? "/",
   plugins: [react(), challengeApi()],
   server: { port: 5173 },
   build: {

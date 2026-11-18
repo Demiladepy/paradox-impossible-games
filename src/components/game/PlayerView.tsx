@@ -5,6 +5,7 @@ import { clone as cloneSkinned } from "three/examples/jsm/utils/SkeletonUtils.js
 import * as THREE from "three";
 import type { LocomotionState } from "../../game/player/controller.ts";
 import { CLIP_FOR_STATE } from "../../game/player/animation.ts";
+import { assetUrl } from "../../asset-url.ts";
 
 /**
  * The Lux3D contestant.
@@ -15,8 +16,8 @@ import { CLIP_FOR_STATE } from "../../game/player/animation.ts";
  * wrong, the wrong animation would play here.
  */
 
-export const CONTESTANT_URL = "/assets/generated/contestant-01-anim.glb";
-export const RIVAL_URL = "/assets/generated/rival-01-anim.glb";
+export const CONTESTANT_URL = assetUrl("/assets/generated/contestant-01-anim.glb");
+export const RIVAL_URL = assetUrl("/assets/generated/rival-01-anim.glb");
 
 /** Cool rim for the player; rivals get warm ones. Reads instantly at a distance. */
 export const PLAYER_TINT = "#2f8fd8";

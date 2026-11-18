@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { Clone, useGLTF } from "@react-three/drei";
 import { surfaceY } from "../../game/arena/reach.ts";
 import type { ArenaDefinition } from "../../game/arena/types.ts";
+import { assetUrl } from "../../asset-url.ts";
 
 /**
  * Lamps along the route.
@@ -16,7 +17,7 @@ import type { ArenaDefinition } from "../../game/arena/types.ts";
  * hand-placed — and the lamp is a Lux3D asset, so the thing casting the light is visible.
  */
 
-const LAMP_URL = "/assets/generated/flood-lamp.glb";
+const LAMP_URL = assetUrl("/assets/generated/flood-lamp.glb");
 
 /** Point lights are not free; this is the budget before the rhythm stops being worth it. */
 const MAX_LAMPS = 5;

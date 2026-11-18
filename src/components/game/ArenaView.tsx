@@ -3,6 +3,7 @@ import { Clone, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { ArenaDefinition, DecorDef, PlatformDef } from "../../game/arena/types.ts";
+import { assetUrl } from "../../asset-url.ts";
 
 /**
  * Draws the arena, and shows what the rules are doing to it.
@@ -16,12 +17,12 @@ import type { ArenaDefinition, DecorDef, PlatformDef } from "../../game/arena/ty
  * that rate to toggle a boolean would be absurd.
  */
 
-const SLAB_URL = "/assets/generated/platform-slab.glb";
+const SLAB_URL = assetUrl("/assets/generated/platform-slab.glb");
 
 /** Scenery assets, all Lux3D-generated, keyed by their manifest name. */
 const DECOR_URLS: Record<string, string> = {
-  "exit-obelisk": "/assets/generated/exit-obelisk.glb",
-  "arena-pillar": "/assets/generated/arena-pillar.glb",
+  "exit-obelisk": assetUrl("/assets/generated/exit-obelisk.glb"),
+  "arena-pillar": assetUrl("/assets/generated/arena-pillar.glb"),
 };
 
 interface ArenaViewProps {

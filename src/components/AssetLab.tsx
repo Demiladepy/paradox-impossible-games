@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AssetViewer, type ModelStats } from "./AssetViewer.tsx";
 import { EMPTY_MANIFEST, type AssetManifest, type ManifestEntry } from "../types/manifest.ts";
+import { assetUrl } from "../asset-url.ts";
 
-const MANIFEST_URL = "/assets/generated/manifest.json";
+const MANIFEST_URL = assetUrl("/assets/generated/manifest.json");
 
 /**
  * Asset inspection harness (built for Milestone 0, kept because it stays useful).
@@ -93,7 +94,7 @@ export function AssetLab() {
         {entry ? (
           <>
             <AssetViewer
-              url={entry.file}
+              url={assetUrl(entry.file)}
               activeClip={activeClip}
               showSkeleton={showSkeleton}
               onStats={handleStats}

@@ -24,6 +24,7 @@ import { PostFx } from "./PostFx.tsx";
 import type { QualitySettings } from "../../game/settings/quality.ts";
 // The trailer inherits whatever quality the player last chose in game.
 import { loadQuality, QUALITY } from "../../game/settings/quality.ts";
+import { assetUrl } from "../../asset-url.ts";
 
 /**
  * Trailer mode — the game films itself.
@@ -59,7 +60,7 @@ export function TrailerScreen() {
   const director = useMemo(() => new ShotDirector(), []);
 
   useEffect(() => {
-    fetch("/assets/generated/manifest.json")
+    fetch(assetUrl("/assets/generated/manifest.json"))
       .then((res) => (res.ok ? res.json() : null))
       .then((manifest: { entries?: { name: string }[] } | null) => {
         const names = new Set((manifest?.entries ?? []).map((entry) => entry.name));

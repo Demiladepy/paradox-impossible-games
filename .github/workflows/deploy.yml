@@ -1,0 +1,62 @@
+name: Deploy to GitHub Pages
+
+# The deployed build is deliberately static. The live challenge generator needs an
+# Anthropic key, and a public endpoint holding that key is an open invitation to spend
+# someone else's money, so Pages serves the game with its built-in pack of seven verified
+# rounds. The game is designed to be complete with no network at all (CLAUDE.md rule 6),
+# and the briefing card says "built-in round" rather than pretending otherwise.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; always finish the one in flight.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The same gates that guard a milestone locally guard a deploy.
+      - run: npm run typecheck
+      - run: npm run test
+
+      - name: Build
+        env:
+          PARADOX_BASE: /paradox-impossible-games/
+        run: npm run build
+
+      # Pages is served by Jekyll unless told otherwise, and Jekyll drops files and
+      # folders beginning with an underscore.
+      - run: touch dist/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,5 +1,33 @@
 # Build Status
 
+## 18 Nov 2026 — deployed to GitHub Pages
+
+The game is served statically from GitHub Pages via `.github/workflows/deploy.yml`, which
+typechecks and tests before it builds.
+
+**The deployed build has no live AI generation, deliberately.** The challenge generator
+needs an Anthropic key, and a public endpoint holding that key is an open invitation to
+spend someone else's money. Pages serves the built-in pack of seven verified rounds; the
+briefing card reads "built-in round" rather than pretending. The game was designed to be
+complete with no network at all, so this costs the demo nothing but the badge.
+
+Pages serves a project site from `/<repo>/`, so every absolute `/assets/...` path now goes
+through `src/asset-url.ts`, which prefixes Vite's `BASE_URL`. Getting this wrong does not
+fail the build — it ships an arena with no geometry — so it was verified by serving the
+real production build and fetching the asset URLs:
+
+```
+200  /paradox-impossible-games/
+200  /paradox-impossible-games/assets/generated/manifest.json          5,152 B
+200  /paradox-impossible-games/assets/generated/platform-slab.glb  1,430,616 B
+200  /paradox-impossible-games/assets/generated/contestant-01-anim.glb 1,985,584 B
+```
+
+Worth recording: building this locally through Git Bash silently rewrote the base to
+`/Program Files/Git/paradox-impossible-games/` (MSYS path conversion). It would have
+deployed broken. Build with PowerShell locally; the Ubuntu runner is unaffected.
+
+
 ## 18 Nov 2026 — submission assembly
 
 - **The trailer now teaches the mechanic.** A scripted teaching beat replaces two
