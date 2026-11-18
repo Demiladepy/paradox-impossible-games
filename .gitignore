@@ -8,3 +8,5 @@ dist/
 coverage/
 # raw Lux3D downloads before curation
 public/assets/generated/_raw/
+
+.vercel
