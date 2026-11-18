@@ -135,7 +135,9 @@ Stating these costs nothing and buys credibility. Every one is a refusal, not a 
 
 ## Links to supply on the form
 
+- **Playable build** — <https://demiladepy.github.io/paradox-impossible-games/>
+  (built-in verified rounds; live generation needs a server-side key)
 - **Demo video** — see `docs/DEMO_SCRIPT.md`
-- **Source code** — the GitHub URL, once pushed
+- **Source code** — <https://github.com/Demiladepy/paradox-impossible-games>
 - **Report** — `docs/REPORT.md`, exported to PDF with screenshots
 - **X post** — draft in `docs/SUBMISSION.md`, must carry **#Manycorehackathon**

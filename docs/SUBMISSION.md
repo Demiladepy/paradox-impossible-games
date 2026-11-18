@@ -9,10 +9,21 @@ What the form actually asks for, and what to put in each box.
 ### Required (0/4 until these are in)
 
 **1. Working demo / promotional video** — *choose one method.*
-Upload the video file. The form accepts "a working version" *or* "a demo video showing the
-actual project running", and a video is the safer of the two: a hosted link is one dead
-dev server away from scoring zero. Record Trailer mode, which now opens with the teaching
-beat that demonstrates the gaze rule hands-off.
+
+The game is **live**: <https://demiladepy.github.io/paradox-impossible-games/>
+
+Both options are now available, and they are not equal:
+
+- **Upload the video** if you have to pick one. It is what gets watched, it cannot break,
+  and the teaching beat in Trailer mode demonstrates the gaze rule hands-off.
+- **The live link** is the stronger artefact for a judge who wants to poke at it, and it
+  costs nothing to have. Put it in the report and the X thread regardless.
+
+> The deployed build serves the **built-in pack of seven verified rounds**, not live
+> generation, so its briefing card reads *built-in round*. That is deliberate: the
+> generator needs an Anthropic key, and a public endpoint holding one is an invitation to
+> spend your money. Say so plainly if asked — the game was built to be complete with no
+> network at all, and the badge telling the truth is the point.
 
 > The form says "Recommended: Submit a ModelScope Studio link." ModelScope Studios host
 > Gradio and Streamlit apps; this is a static WebGL build with a small Node endpoint, so it
