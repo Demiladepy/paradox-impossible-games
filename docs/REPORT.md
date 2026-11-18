@@ -38,9 +38,9 @@ screen and a summary.
 | --- | --- |
 | **Arenas** | 2, hand-authored, verified by ballistics analysis |
 | **Rule types implemented** | 3 (`CONDITIONAL_PLATFORM`, `GRAVITY_DIRECTION`, `OBJECT_STATE`) |
-| **Lux3D assets in gameplay** | 5 (platform slab, contestant, rival, obelisk, pillar) |
+| **Lux3D assets in gameplay** | 6 (platform slab, contestant, rival, obelisk, pillar, flood lamp) |
 | **Lux3D API calls** | text-to-3D, auto-rigging, animation retargeting, used in a chain |
-| **Automated tests** | 109, including a headless agent completing a full arena |
+| **Automated tests** | 135, including a headless agent completing a full arena |
 | **Runs offline** | Yes — the whole game plays with no network at all |
 
 ### The mechanics
@@ -350,10 +350,10 @@ round, so the generated challenge changes how the world looks as well as how it 
 
 | | |
 | --- | --- |
-| Lux3D generations in the shipped game | 5 assets across 12 API tasks |
-| Asset payload | 110.89 MB → **9.89 MB** (−91%) |
+| Lux3D generations in the shipped game | 6 assets across 10 API tasks, each recorded in `manifest.json` |
+| Asset payload | 120.29 MB → **10.75 MB** (−91%) |
 | Animation clips driving the contestants | 10, retargeted in-place |
-| Automated tests | **109**, all passing |
+| Automated tests | **135**, all passing |
 | Initial JS bundle | 381 kB gzipped (physics lazy-loaded) |
 | Rounds per run | 3, drawn from a pack of 7 verified rounds |
 | Works with no network | Yes |

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>PARADOX — project report</title>
+<style>
+@font-face{font-family:"Space Grotesk";src:url("file:///C:/Users/User/Desktop/work/paradox/node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2") format("woff2");font-weight:100 900;font-display:swap;}
+@font-face{font-family:"JetBrains Mono";src:url("file:///C:/Users/User/Desktop/work/paradox/node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2") format("woff2");font-weight:100 900;font-display:swap;}
+:root{
+  --ink:#11151c; --muted:#5a6675; --rule:#d8dee7; --accent:#0e7490; --accent-soft:#e6f4f7;
+  --code-bg:#f4f6f9;
+}
+@page{ size:A4; margin:18mm 16mm; }
+*{box-sizing:border-box;}
+body{
+  font-family:"Space Grotesk",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color:var(--ink); line-height:1.62; font-size:10.4pt; margin:0;
+  -webkit-print-color-adjust:exact; print-color-adjust:exact;
+}
+h1{
+  font-size:27pt; line-height:1.1; letter-spacing:-0.02em; margin:0 0 6pt;
+  border-bottom:3px solid var(--ink); padding-bottom:10pt;
+}
+h2{
+  font-size:15pt; margin:20pt 0 7pt; letter-spacing:-0.01em;
+  border-bottom:1px solid var(--rule); padding-bottom:4pt;
+}
+h3{ font-size:11.6pt; margin:14pt 0 5pt; color:var(--accent); }
+h3:first-of-type{ color:var(--muted); font-weight:500; letter-spacing:0.06em;
+  text-transform:uppercase; font-size:9.6pt; border:0; margin-top:8pt; }
+h4{ font-size:10.6pt; margin:11pt 0 4pt; }
+p{ margin:0 0 7pt; }
+em{ color:var(--muted); }
+a{ color:var(--accent); text-decoration:none; }
+hr{ border:0; border-top:1px solid var(--rule); margin:14pt 0; }
+code{
+  font-family:"JetBrains Mono",ui-monospace,Consolas,monospace; font-size:0.86em;
+  background:var(--code-bg); padding:1px 4px; border-radius:3px;
+}
+pre{
+  background:var(--code-bg); border-left:3px solid var(--accent); border-radius:3px;
+  padding:9pt 11pt; overflow:hidden; margin:9pt 0; break-inside:avoid;
+}
+pre code{ background:none; padding:0; font-size:8.3pt; line-height:1.5; white-space:pre-wrap; }
+blockquote{
+  margin:11pt 0; padding:9pt 13pt; background:var(--accent-soft);
+  border-left:3px solid var(--accent); font-size:11.4pt; break-inside:avoid;
+}
+table{ border-collapse:collapse; width:100%; margin:9pt 0; font-size:9.3pt; break-inside:avoid; }
+th,td{ border:1px solid var(--rule); padding:4.5pt 7pt; text-align:left; vertical-align:top; }
+th{ background:var(--code-bg); font-weight:600; }
+tbody tr:nth-child(even){ background:#fafbfc; }
+ul,ol{ margin:0 0 8pt; padding-left:17pt; }
+li{ margin-bottom:3.5pt; }
+.page-break{ break-before:page; }
+h1.page-break{ break-before:avoid; }
+.shots{ margin:11pt 0 13pt; break-inside:avoid; }
+.shots.pair{ display:grid; grid-template-columns:1fr 1fr; gap:9pt; }
+figure{ margin:0 0 9pt; break-inside:avoid; }
+figure img{ width:100%; border:1px solid var(--rule); border-radius:3px; display:block; }
+figcaption{ font-size:8.2pt; color:var(--muted); margin-top:3.5pt; line-height:1.42; }
+.missing{
+  border:1.5px dashed #b9c3d0; border-radius:4px; background:#fbfcfd;
+  min-height:120pt; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:5pt; text-align:center; padding:12pt;
+}
+.missing span{ font-family:"JetBrains Mono",monospace; font-size:9pt; color:#8794a4; }
+.missing small{ font-size:7.6pt; color:#a3aebc; max-width:34ch; line-height:1.4; }
+.footer{ margin-top:22pt; padding-top:9pt; border-top:1px solid var(--rule);
+  font-size:8.4pt; color:var(--muted); }
+</style>
+</head>
+<body>
+<h1>PARADOX: THE IMPOSSIBLE GAMES</h1>
+<h3>Manycore Aholo Global 3D AI Hackathon — project report</h3>
+<p><em>An AI-generated 3D survival game where the physical rules change between rounds — and the game plays each round itself before letting you in.</em></p>
+<hr />
+<h2 class="page-break">1. The idea</h2>
+<div class="shots pair"><figure><div class="missing"><span>01-false-floor.png</span><small>drop this screenshot into docs/report-assets/ and run npm run report again</small></div><figcaption>The gap run, seen from the start pad. The four platforms are unmade — they exist only while nobody looks at them.</figcaption></figure>
+<figure><div class="missing"><span>02-looking-away.png</span><small>drop this screenshot into docs/report-assets/ and run npm run report again</small></div><figcaption>The same four platforms, with the gaze turned aside. Solid again.</figcaption></figure></div>
+<p>Most generative-3D projects use AI to make <strong>assets</strong>: a model, a texture, a scene. The assets get better; the game underneath stays the same.</p>
+<p>PARADOX asks a different question:</p>
+<blockquote><strong>What if the AI designed the rules of physics instead of the furniture?</strong></blockquote>
+<p>Every round, a model proposes a <em>challenge</em>: which arena, what the laws of that arena are for the next ninety seconds, what counts as winning, how long you have. One round the platforms stop existing while you look at them. The next, gravity turns over on a countdown and you finish the course walking on the ceiling.</p>
+<p>The player's job is not to traverse a level. It is to <strong>work out what is true here</strong> before it kills them.</p>
+<p>And because an AI that invents physical laws will cheerfully invent an impossible one, the game <strong>plays each round itself, headless, before a human is allowed in.</strong></p>
+<hr />
+<h2 class="page-break">2. What we built</h2>
+<div class="shots pair"><figure><div class="missing"><span>03-race.png</span><small>drop this screenshot into docs/report-assets/ and run npm run report again</small></div><figcaption>Racing a rival through the gap run. The rival is the same agent that verified the round.</figcaption></figure>
+<figure><div class="missing"><span>04-gravity.png</span><small>drop this screenshot into docs/report-assets/ and run npm run report again</small></div><figcaption>Arena 02 after the inversion: the course finishes on the ceiling.</figcaption></figure></div>
+<p>A complete, playable run: three rounds of rising difficulty, with rivals, a timer, a result screen and a summary.</p>
+<table><tbody><tr><td><strong>Arenas</strong></td><td>2, hand-authored, verified by ballistics analysis</td></tr><tr><td><strong>Rule types implemented</strong></td><td>3 (<code>CONDITIONAL_PLATFORM</code>, <code>GRAVITY_DIRECTION</code>, <code>OBJECT_STATE</code>)</td></tr><tr><td><strong>Lux3D assets in gameplay</strong></td><td>6 (platform slab, contestant, rival, obelisk, pillar, flood lamp)</td></tr><tr><td><strong>Lux3D API calls</strong></td><td>text-to-3D, auto-rigging, animation retargeting, used in a chain</td></tr><tr><td><strong>Automated tests</strong></td><td>135, including a headless agent completing a full arena</td></tr><tr><td><strong>Runs offline</strong></td><td>Yes — the whole game plays with no network at all</td></tr></tbody></table>
+<h3>The mechanics</h3>
+<p><strong>THE FALSE FLOOR.</strong> Platforms are solid only while you are <em>not</em> looking at them. To cross, you must turn away from the ground you are about to stand on and trust it. Two details make it a mechanic rather than a nuisance: a hysteresis band on the view cone so a platform at the edge of vision latches instead of flickering, and an exemption for the platform under your feet — you can unmake the floor ahead of you, never the floor beneath you.</p>
+<p><strong>GRAVITY ZERO.</strong> Gravity inverts along Y on a schedule, after a visible countdown. The character, the camera and the character's own body all re-base their idea of "up", and you cross the ungapped ceiling while the floor is unreachable. The arena's ceiling is continuous on purpose: inverting must always be survivable, so the danger lives in the <em>return</em>, which is on a clock you can see.</p>
+<p><strong>UNMADE GROUND.</strong> Both at once, plus platforms blinking on their own timer.</p>
+<hr />
+<h2 class="page-break">3. How Aholo Lux3D is used</h2>
+<p>Lux3D is not decoration here. Every character and every prop the player sees was generated by it, and the <strong>auto-rigging and animation-retargeting APIs are what make the contestants move</strong>.</p>
+<h3>3.1 The character pipeline — text to a rigged, animated contestant</h3>
+<p>This is the part we are proudest of, and it is three Lux3D endpoints chained:</p>
+<pre><code>text-to-3D  ──▶  /animations/rig  ──▶  /animations/retarget  ──▶  contestant.glb
+   336s             59s                   17s                     (10 clips, in-place)</code></pre>
+<p>Real task ids from the run: <code>6929612</code> → <code>6929848</code> → <code>6929908</code>.</p>
+<p><strong>Auto-rigging accepted a text-generated humanoid on the first attempt.</strong> That was the single biggest risk in the project and it came back clean in 59 seconds. Retargeting then delivered <strong>10 of 10 requested clips</strong> — <code>Idle_Loop</code>, <code>Walk_Loop</code>, <code>Jog_Fwd_Loop</code>, <code>Sprint_Loop</code>, <code>Jump_Start/Loop/Land</code>, <code>Roll</code>, <code>Hit_Knockback</code>, <code>Death01</code> — in a single combined, in-place GLB that drops straight into a <code>THREE.AnimationMixer</code>.</p>
+<p>Because the result URLs stay fetchable for two hours, each stage's output feeds the next <strong>without uploading anything</strong>.</p>
+<p>We ran the chain twice, and the second run is the more useful data point: the rival was generated with <strong><code>G1-Turbo</code> instead of <code>G1</code> — 116 s instead of 336 s — and auto-rigging accepted it just as readily</strong>, delivering 10/10 clips again. For characters that will be seen at a distance, the fast model is enough, and it turns an eight-minute pipeline into a three-minute one.</p>
+<h3>3.2 Assets in the game</h3>
+<div class="shots"><figure><div class="missing"><span>06-asset-lab.png</span><small>drop this screenshot into docs/report-assets/ and run npm run report again</small></div><figcaption>Asset Lab: the Lux3D contestant with its skeleton overlay and the ten retargeted clips.</figcaption></figure></div>
+<table><thead><tr><th>Asset</th><th>Lux3D task</th><th>Endpoint</th><th>Where you see it</th></tr></thead><tbody><tr><td><code>platform-slab</code></td><td><code>6929533</code></td><td>text-to-3D <code>G1-Turbo</code>, 104s</td><td>Every platform in both arenas</td></tr><tr><td><code>contestant-01</code></td><td><code>6929612/848/908</code></td><td>text-to-3D <code>G1</code> → rig → retarget</td><td>The character you control</td></tr><tr><td><code>rival-01</code></td><td><code>8015374/470/750</code></td><td>text-to-3D <code>G1-Turbo</code> → rig → retarget</td><td>Your opponent</td></tr><tr><td><code>exit-obelisk</code></td><td><code>8015028</code></td><td>text-to-3D <code>G1-Turbo</code>, 110s</td><td>Marks the exit in both arenas</td></tr><tr><td><code>arena-pillar</code></td><td><code>8015029</code></td><td>text-to-3D <code>G1-Turbo</code>, 139s</td><td>Scenery framing the courses</td></tr></tbody></table>
+<p>Every asset is recorded in <code>public/assets/generated/manifest.json</code> with its prompt, task id, version, face count and date. <strong>Every model in the game is traceable to the prompt that made it.</strong></p>
+<hr />
+<h2 class="page-break">4. Asset iteration — what we learned and changed</h2>
+<p>The hackathon asks for comparisons of key asset iterations. Ours were driven by measurement, not taste.</p>
+<h3>4.1 The first asset was 93% texture</h3>
+<p>The first generated slab arrived at <strong>12.95 MB</strong>. We wrote a GLB inspector (<code>npm run inspect:asset</code>) to find out where that went:</p>
+<pre><code>platform-slab.glb  12.95 MB
+  meshes=1  primitives=1  materials=1  skins=0  animations=0
+  textures=2 totalling 12.11 MB (93% of the file)
+    [0] image 2048x2048 image/png 7.44 MB
+    [1] image 2048x2048 image/png 4.67 MB</code></pre>
+<p>The mesh was <strong>18,272 triangles</strong> — <code>faceCount</code> works and is worth setting, but geometry was <strong>7%</strong> of the payload. Budgeting by triangles alone would have shipped a 70 MB demo.</p>
+<h3>4.2 The optimisation pass</h3>
+<div class="shots"><figure><div class="missing"><span>08-inspect-before-after.png</span><small>drop this screenshot into docs/report-assets/ and run npm run report again</small></div><figcaption>npm run inspect:asset, before and after the texture pass — 120.29 MB down to 10.75 MB.</figcaption></figure></div>
+<p><code>npm run optimize:asset</code> resizes textures to 1024 and re-encodes to WebP, preserving every glTF extension:</p>
+<table><thead><tr><th>Asset</th><th>Before</th><th>After</th><th>Saving</th></tr></thead><tbody><tr><td>contestant-01-anim.glb</td><td>20.98 MB</td><td><strong>1.89 MB</strong></td><td>−91%</td></tr><tr><td>contestant-01-rigged.glb</td><td>20.31 MB</td><td><strong>1.42 MB</strong></td><td>−93%</td></tr><tr><td>platform-slab.glb</td><td>12.95 MB</td><td><strong>1.36 MB</strong></td><td>−89%</td></tr><tr><td>exit-obelisk.glb</td><td>10.41 MB</td><td><strong>1.02 MB</strong></td><td>−90%</td></tr><tr><td>arena-pillar.glb</td><td>10.43 MB</td><td><strong>1.18 MB</strong></td><td>−89%</td></tr><tr><td><strong>Total</strong></td><td><strong>75.08 MB</strong></td><td><strong>6.89 MB</strong></td><td><strong>−91%</strong></td></tr></tbody></table>
+<p>All 10 animation clips, the skin and the 54-node skeleton were verified intact afterwards — not assumed.</p>
+<h3>4.3 Three Lux3D findings worth passing on</h3>
+<ol><li><strong><code>aiPredictSize</code> reasons about the real world.</strong> Asked for an "arena floor tile", it produced one 0.30 m across — correct for a tile, useless for a platform. Gameplay geometry should pass <code>customSize</code> explicitly.</li><li><strong>Retargeted clips come back named <code>animation_1 … animation_N</code></strong>, not the IDs you asked for. We rewrite the names into the GLB at download so game code can ask for <code>Idle_Loop</code>. The mapping is positional, and we checked it against clip durations before trusting it: walk 1.33 s &gt; jog 0.93 s &gt; sprint 0.67 s — cycle length falling as gait speed rises is exactly what real locomotion data looks like.</li><li><strong>The combined retarget output is self-contained</strong> (mesh + skeleton + all clips), so the separate rigged GLB never needs to reach the browser.</li></ol>
+<hr />
+<h2 class="page-break">5. The Reality Rule Engine</h2>
+<div class="shots"><figure><div class="missing"><span>05-briefing-card.png</span><small>drop this screenshot into docs/report-assets/ and run npm run report again</small></div><figcaption>A briefing card. The badge reads AI-designed round, and the verified line carries the probe's real completion time.</figcaption></figure></div>
+<p>The AI proposes; ordinary deterministic code decides.</p>
+<p>A rule is <strong>data</strong>, never code. A model picks from a fixed list of rule types and sets parameters within declared ranges. There is no <code>eval</code>, no generated expression, nothing executed. Each rule type is a module with a <code>parse</code> step that returns either typed parameters or a reason for refusal, and <strong>loading is all-or-nothing</strong> — a failure late in a list cannot leave earlier rules half-installed, because dropping a player into a world that does not match its own briefing is worse than refusing it.</p>
+<p><code>SPATIAL_PORTAL</code> is declared in the schema and deliberately unimplemented. A challenge asking for it is <strong>refused with a reason</strong>, never silently ignored.</p>
+<p>Everything runs on a fixed 1/60 timestep with seeded randomness, so a round replays identically — which is what makes verification mean anything.</p>
+<hr />
+<h2 class="page-break">6. Verification: the game plays itself first</h2>
+<p>This is the part that makes PARADOX a <em>system</em> rather than a generator.</p>
+<p>A generated challenge passes four gates, cheapest first:</p>
+<pre><code>shape      zod .strict()  — an unexpected key is a rejection, not a dropped field
+references every arena, platform and exit it names must exist
+sanity     contradictory rules, two gravity schedules, gravity where there is no ceiling
+solvability PLAY IT — a scripted agent attempts the objective in the real simulation</code></pre>
+<p>The first three take microseconds. The fourth runs the <strong>real</strong> engine headless — real Rapier, real rule modules, real character controller — with no renderer, and reports whether an agent finished.</p>
+<h3>6.1 The probe plays the mechanics</h3>
+<p>A probe that ignored the rules would pass everything and prove nothing. Ours reads the active rules and plays them:</p>
+<ul><li>Under <strong>THE FALSE FLOOR</strong> it averts its gaze from the platform it is crossing to, and strafes — because movement is expressed relative to where you are looking, an agent that looks one way and walks another has to resolve its intent onto the forward and strafe axes, exactly as a player's fingers do.</li><li>Under the <strong>inverse</strong> rule, where platforms exist only while watched, it looks <em>down at</em> the ledge it is about to step on. Pointing the yaw at it is not enough: a platform you are standing beside sits well below a level gaze, outside the cone entirely.</li><li>Under <strong>OBJECT_STATE</strong> it mirrors the rule's own phase maths to ask whether the platform will still be there <em>when it lands</em> — not whether it is there now. A blinking platform that looks safe at take-off is exactly how you die with the floor visible beneath you.</li><li>It refuses gaps no jump can clear, rather than walking into them.</li></ul>
+<h3>6.2 The control experiment</h3>
+<div class="shots"><figure><div class="missing"><span>07-probe-control.png</span><small>drop this screenshot into docs/report-assets/ and run npm run report again</small></div><figcaption>npm run probe:control — five rounds, two agents. The rule-aware agent solves every round; the agent that ignores the rules fails every one.</figcaption></figure></div>
+<p>Every challenge is probed <strong>twice</strong> — once by an agent that knows the rules, once by one that does not. If both succeed, the rule is inert and the round is not a challenge:</p>
+<pre><code>                   rule-aware agent        agent that ignores the rules
+The False Floor    SOLVED  11.9s           FAILED  (timed out, waiting for ground)
+Wrong Way Round    SOLVED  11.8s           FAILED  (eliminated at 2.5s)
+Stutter            SOLVED  16.8s           FAILED  (eliminated at 6.5s)
+Narrow Margin      SOLVED  11.8s           FAILED  (timed out, waiting for ground)
+Unmade Ground      SOLVED  11.5s           FAILED  (timed out, waiting for ground)</code></pre>
+<p>Five rounds, two agents, and the result is clean in every case. Note Stutter's 16.8 s against everything else's ~11.8: that round blinks its platforms on a timer, and the extra five seconds is the agent <em>waiting</em> for the floor to come back. The probe is not racing through — it is playing.</p>
+<p><strong>That control test found two real bugs that no type system would catch.</strong></p>
+<p>The first: the "never unmake the floor under your feet" exemption used a geometric test, which counts a platform as supporting the instant your feet pass within a third of a metre of it — during a fall, that is the moment before landing. The platform you were staring at turned solid and caught you. <strong>The signature mechanic of the game did nothing, and looked like it worked.</strong> A naive agent cleared the course in the same 9.5 seconds as a careful one.</p>
+<p>The second: measuring the view cone from the camera made the mechanic unplayable in third person. A third-person camera's whole job is to frame the player, so the ground beside them is <em>always</em> in shot; turning away swings the camera round to look at the same patch of floor. There is no yaw that clears it. Gaze now originates at the character's head.</p>
+<h3>6.3 What "verified playable" is allowed to mean</h3>
+<p>A passing probe means: <em>an agent completed this configuration, in this simulation, with this seed.</em> An existence proof by construction.</p>
+<p>It is <strong>not</strong> a proof the challenge is solvable in general, and <strong>not</strong> a claim a human would find it fair — the agent is handed the route, where a player must deduce it. The briefing screen says exactly this, in those words. We would rather be believed than impressive.</p>
+<p>The failing case is the one that earns its keep: <strong>nobody is ever sent into a round that could not be finished.</strong></p>
+<hr />
+<h3>6.4 It works, and the gates matter</h3>
+<p>Measured against the live API:</p>
+<table><thead><tr><th>Difficulty</th><th>Time</th><th>Result</th></tr></thead><tbody><tr><td>1</td><td>7.1 s</td><td>"Shy Steps" — probe solved in 11.9 s</td></tr><tr><td>2</td><td>7.1 s</td><td>"Don't Look Down" — gaze + blinking platforms, probe solved in 18.2 s</td></tr><tr><td>3</td><td>15.0 s</td><td>"Blind Faith Ascent" — two rivals, probe solved in 18.2 s</td></tr></tbody></table>
+<p>On the first live call the model omitted a required field on every rule. The schema caught it, the specific failure went back as a retry, and the second attempt passed all four gates. That is the system behaving exactly as designed on its first contact with reality — and showing a complete rule in the prompt removed the mistake entirely, halving latency.</p>
+<p>The model is genuinely good at the part we asked it to be good at. <em>"The steps are shy and vanish under a stare… Trust your feet, not your eyes, and listen to the beat"</em> is its own writing, and the last clause is it working out that blinking platforms have an audible rhythm.</p>
+<h2 class="page-break">7. The opponent is the probe</h2>
+<p>Your rival is the same <code>Autopilot</code> that validated the round, handicapped on speed and reaction time so it stays beatable: it clears Arena 01 in <strong>29.5 s</strong> against the unhandicapped agent's <strong>11.9 s</strong>.</p>
+<p>This has a pleasing consequence — the opponent automatically understands every mechanic the validator understands, and gets better for free every time the probe does.</p>
+<p><strong>Each contestant observes their own arena.</strong> The False Floor keys off <em>a</em> gaze; with one shared world, a rival's glance would unmake the floor under you and the round would be decided by someone else's eyes. Giving each contestant their own copy is fairer, leaves the player's simulation untouched, and for a game called PARADOX is the more interesting answer: you are not racing through the same arena, you are racing through your own version of it.</p>
+<hr />
+<h2 class="page-break">8. Architecture</h2>
+<p>Three clocks, strictly separated:</p>
+<pre><code>BUILD TIME (has secrets)        GENERATION TIME (once/round)     FRAME TIME (60fps)
+scripts/lux3d/*                 LLM → ChallengeConfig            Rapier step
+  generate → poll → download    4 validation gates               rule update
+  → commit GLB + manifest       → accepted | fallback            opponent step → render</code></pre>
+<p>Nothing crosses these boundaries. <strong>The frame loop never calls a network. The LLM never touches physics. No API key ever reaches the browser.</strong></p>
+<p><code>src/game/**</code> is plain TypeScript — no DOM, no React, no three.js — which is why the same code can be driven headless by the probe and by 103 tests in plain Node. We deliberately used raw Rapier instead of the React binding so that would be possible.</p>
+<table><thead><tr><th>Layer</th><th>Choice</th></tr></thead><tbody><tr><td>App</td><td>React 19, TypeScript 5.9, Vite 8</td></tr><tr><td>Render</td><td>three.js 0.187 + React Three Fiber 9</td></tr><tr><td>Physics</td><td><code>@dimforge/rapier3d-compat</code> (raw, lazy-loaded chunk)</td></tr><tr><td>Validation</td><td>zod 4 + deterministic checks + simulation probe</td></tr><tr><td>3D content</td><td><strong>Aholo Lux3D</strong></td></tr><tr><td>Challenge design</td><td>Claude (<code>claude-opus-5-5</code>), server-side only</td></tr><tr><td>Audio</td><td>Synthesised in-browser — no audio files</td></tr></tbody></table>
+<hr />
+<h2 class="page-break">9. Limitations — stated plainly</h2>
+<ul><li><strong><code>REACH_EXIT</code> on the gravity arena is beyond the probe.</strong> Crossing needs gravity timing the agent does not do. It is <strong>refused</strong> rather than guessed at.</li><li><strong>Gravity inverts along Y only.</strong> Arbitrary gravity directions would need the character controller re-based onto an arbitrary axis; not something to attempt days from a deadline.</li><li><strong><code>SPATIAL_PORTAL</code> is unimplemented</strong> and refused by name.</li><li>The probe proves completion by <em>an agent</em>, not fairness for a human. Said on screen.</li></ul>
+<h2 class="page-break">10. What we would do next</h2>
+<p>Teach the probe to time gravity flips, so <code>REACH_EXIT</code> works in Arena 02. Let the LLM propose arena <em>layouts</em> as well as rules, validated by the same reachability analysis that already checks our hand-authored ones. Use Lux3D material transfer to re-skin an arena per round, so the generated challenge changes how the world looks as well as how it behaves.</p>
+<hr />
+<h2 class="page-break">11. Numbers</h2>
+<table><tbody><tr><td>Lux3D generations in the shipped game</td><td>6 assets across 10 API tasks, each recorded in <code>manifest.json</code></td></tr><tr><td>Asset payload</td><td>120.29 MB → <strong>10.75 MB</strong> (−91%)</td></tr><tr><td>Animation clips driving the contestants</td><td>10, retargeted in-place</td></tr><tr><td>Automated tests</td><td><strong>135</strong>, all passing</td></tr><tr><td>Initial JS bundle</td><td>381 kB gzipped (physics lazy-loaded)</td></tr><tr><td>Rounds per run</td><td>3, drawn from a pack of 7 verified rounds</td></tr><tr><td>Works with no network</td><td>Yes</td></tr></tbody></table>
+<div class="footer">
+PARADOX: The Impossible Games — Manycore Aholo Global 3D AI Hackathon.
+Source: github.com/Demiladepy/paradox-impossible-games
+</div>
+</body>
+</html>

@@ -2,6 +2,54 @@
 
 **Deadline: 19 November 2026, 06:00 EST** (12:00 Nigeria time). Feature freeze 18 Nov.
 
+## The submission form, field by field
+
+What the form actually asks for, and what to put in each box.
+
+### Required (0/4 until these are in)
+
+**1. Working demo / promotional video** — *choose one method.*
+Upload the video file. The form accepts "a working version" *or* "a demo video showing the
+actual project running", and a video is the safer of the two: a hosted link is one dead
+dev server away from scoring zero. Record Trailer mode, which now opens with the teaching
+beat that demonstrates the gaze rule hands-off.
+
+> The form says "Recommended: Submit a ModelScope Studio link." ModelScope Studios host
+> Gradio and Streamlit apps; this is a static WebGL build with a small Node endpoint, so it
+> is not a natural fit and is not worth discovering that the night before the deadline.
+> **Take the video.** If there is spare time afterwards, a static deploy link can go in as
+> well — but the video is what gets graded.
+
+**2. Project report** — upload **`docs/PARADOX-report.pdf`**.
+Built by `npm run report` from `docs/REPORT.md`. Drop the eight screenshots listed below
+into `docs/report-assets/` and run it again; each one renders as a labelled placeholder
+until its file is there, so nothing goes missing quietly.
+
+**3. Ecosystem devices and technologies used** — select **None**.
+Insta360, DEEP Robotics and WorkBuddy were not used. Claiming otherwise is the kind of
+thing that unravels under one question.
+
+**4. Application tracks** — select **Gaming Application Award** and **Film & TV Application
+Award**.
+
+- *Gaming* is the primary and is not in doubt.
+- *Film & TV* is a genuine second rather than padding: Trailer mode is a shot director — a
+  typed shot list, a cinematic camera independent of the player's, scripted title cards and
+  a staged demonstration beat — and the game films itself with no operator. That is an AI
+  3D application to filmed content, which is what the track is for.
+- Skip Spatial Design, 3D Printing and Embodied AI. Nothing here is an honest fit, and a
+  scattershot entry reads worse than a focused one.
+
+If you would rather be narrow, **Gaming alone is the safe answer.**
+
+### Bonus (both worth taking)
+
+- **Social media post link** — copy in `docs/X_POST.md`. One post, `#Manycorehackathon`,
+  video native, link in a reply.
+- **Source code** — `https://github.com/Demiladepy/paradox-impossible-games` *(done)*.
+
+---
+
 ## Companion documents
 
 - **`SUBMISSION_DESCRIPTION.md`** — paste-ready copy: name, tagline, short and full

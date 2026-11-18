@@ -1,5 +1,30 @@
 # Build Status
 
+## 18 Nov 2026 — submission assembly
+
+- **The trailer now teaches the mechanic.** A scripted teaching beat replaces two
+  atmosphere shots: the agent stands still and performs the gaze rule — stare until the
+  floor dissolves, look away until it returns, twice — filmed from the side so the head
+  turn and the platform stay in frame together. Verified headless with `npm run probe:demo`
+  against the real rule engine: unmade 87%/84% of the staring phases, solid 0/12/15% of the
+  averted ones, agent survives. **Not yet seen rendered** — the preview pane only lays out
+  when the session is open in a window.
+- **The report is a real PDF.** `npm run report` converts `docs/REPORT.md` to a print-styled
+  `docs/PARADOX-report.pdf` via headless Chrome, injecting screenshots by heading and
+  rendering labelled placeholders for the eight still missing. No markdown library was
+  available, so the converter handles the constructs this report uses and nothing else.
+- **Stale figures corrected** in the report: 5 assets to 6, 109 tests to 135, and the asset
+  payload to the real 120.29 MB to 10.75 MB.
+- **`docs/X_POST.md`** — post copy, thread structure and the rules for the video.
+- **`docs/SUBMISSION.md`** now answers the submission form field by field.
+
+Tests 135 passing across 9 files, typecheck and build clean. Repo is public at
+github.com/Demiladepy/paradox-impossible-games.
+
+Still to do: record the video, capture the eight screenshots and rerun `npm run report`,
+post on X, submit.
+
+
 ## 17 Nov 2026 — submission prep, and the preview pane finally rendered
 
 Four things happened today, and the third is the one that matters.

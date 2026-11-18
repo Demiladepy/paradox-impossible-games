@@ -20,7 +20,8 @@
     "probe:fallbacks": "node --import tsx scripts/probe-fallbacks.ts",
     "probe:control": "node --import tsx scripts/probe-control.ts",
     "budget": "node --import tsx scripts/budget.ts",
-    "probe:demo": "node --import tsx scripts/probe-demonstration.ts"
+    "probe:demo": "node --import tsx scripts/probe-demonstration.ts",
+    "report": "node --import tsx scripts/build-report.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
