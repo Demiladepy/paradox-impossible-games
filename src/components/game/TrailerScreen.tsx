@@ -4,6 +4,12 @@ import * as THREE from "three";
 import { FALLBACK_CHALLENGES } from "../../game/challenges/fallback.ts";
 import { Autopilot } from "../../game/agent/autopilot.ts";
 import { ShotDirector, TRAILER_SECONDS } from "../../game/cinematic/shots.ts";
+import {
+  GazeDemonstration,
+  pickDemonstrationTarget,
+  surfacePoint,
+} from "../../game/cinematic/demonstration.ts";
+import type { PlatformDef } from "../../game/arena/types.ts";
 import { NO_LOOK } from "../../game/GameWorld.ts";
 import { Round, type RoundSnapshot } from "../../game/progression/round.ts";
 import { DEFAULT_TUNING, type LocomotionState } from "../../game/player/controller.ts";
@@ -239,11 +245,17 @@ function CinematicRunner({
   const shadowTargetsRef = useRef<ShadowTarget[]>([]);
   const lastCard = useRef("");
   const announced = useRef(false);
+  const demoCaption = useRef<string | null>(null);
 
   const pilot = useMemo(
     () => new Autopilot(round.world.arena, DEFAULT_TUNING, round.world.rules.accepted),
     [round],
   );
+
+  // The teaching beat takes the agent's gaze away from the autopilot for a few seconds.
+  const demo = useMemo(() => new GazeDemonstration(), [round]);
+  const demoTarget = useRef<PlatformDef | null>(null);
+  const wasDemonstrating = useRef(false);
 
   const hasRival = round.snapshot().opponents.length > 0;
 
@@ -255,28 +267,61 @@ function CinematicRunner({
     if (playing) {
       // The agent plays; its gaze still drives the rules, which is why the shot camera
       // below is kept entirely separate from the rig.
+      // Is the teaching beat live? Asked before the step, because the gaze it sets is what
+      // the rules read this frame.
+      const demonstrating = director.demonstrating;
+      if (demonstrating && !wasDemonstrating.current) {
+        // Choose the platform at the moment the beat begins — wherever the agent happens
+        // to have got to by then. A target chosen up front would be behind it.
+        demoTarget.current = pickDemonstrationTarget(
+          round.world.arena,
+          round.world.rules.accepted,
+          game.player.position,
+          game.player.supportingPlatformId,
+        );
+        demo.reset();
+      }
+      wasDemonstrating.current = demonstrating;
+
+      const staged = demonstrating ? demoTarget.current : null;
+
       if (game.status === "running") {
-        const input = pilot.decide(game, (yaw, pitch) => {
-          round.world.camera.yaw = yaw;
-          round.world.camera.pitch = pitch;
-        });
-        round.update(input, NO_LOOK, delta);
+        if (staged) {
+          // The agent stands still and performs. Its own navigation would walk it off the
+          // mark mid-sentence, so the autopilot sits this beat out entirely.
+          const frame = demo.update(game.gazeOrigin, staged, delta);
+          round.world.camera.yaw = frame.yaw;
+          round.world.camera.pitch = frame.pitch;
+          demoCaption.current = frame.caption;
+          round.update({ forward: 0, right: 0, jump: false, sprint: false }, NO_LOOK, delta);
+        } else {
+          demoCaption.current = null;
+          const input = pilot.decide(game, (yaw, pitch) => {
+            round.world.camera.yaw = yaw;
+            round.world.camera.pitch = pitch;
+          });
+          round.update(input, NO_LOOK, delta);
+        }
       } else if (!announced.current) {
         announced.current = true;
         onRoundFinished();
       }
 
       const subject = game.player.position;
-      const frame = director.update(subject, delta);
+      const focus = staged ? surfacePoint(staged) : null;
+      const frame = director.update(subject, delta, focus);
 
       camera.position.set(frame.position.x, frame.position.y, frame.position.z);
       camera.up.set(0, 1, 0);
       camera.lookAt(frame.target.x, frame.target.y, frame.target.z);
 
-      const key = `${frame.title ?? ""}|${frame.caption ?? ""}`;
+      // During the beat the words come from the gaze schedule, so they can never drift out
+      // of step with what the platform is doing.
+      const caption = frame.demonstrate ? demoCaption.current : frame.caption;
+      const key = `${frame.title ?? ""}|${caption ?? ""}`;
       if (key !== lastCard.current) {
         lastCard.current = key;
-        onCard({ title: frame.title, caption: frame.caption });
+        onCard({ title: frame.title, caption });
       }
       onProgress(frame.progress);
       if (director.finished) onFinished();

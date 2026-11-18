@@ -1,4 +1,5 @@
-import { damp, type Vec3 } from "../core/math.ts";
+import { damp, normalize, type Vec3 } from "../core/math.ts";
+import { DEMONSTRATION_SECONDS } from "./demonstration.ts";
 
 /**
  * Camera moves for the trailer.
@@ -13,7 +14,7 @@ import { damp, type Vec3 } from "../core/math.ts";
  * tested without a renderer.
  */
 
-export type ShotKind = "orbit" | "track" | "dolly" | "rise" | "wide";
+export type ShotKind = "orbit" | "track" | "dolly" | "rise" | "wide" | "demo";
 
 export interface Shot {
   kind: ShotKind;
@@ -40,6 +41,8 @@ export interface ShotFrame {
   target: Vec3;
   caption: string | null;
   title: string | null;
+  /** True while the teaching beat owns the agent's gaze. */
+  demonstrate: boolean;
   /** 0 → 1 through the whole sequence, for a progress bar while recording. */
   progress: number;
 }
@@ -60,21 +63,15 @@ export const TRAILER_SHOTS: readonly Shot[] = [
     radius: 9,
     height: 1.2,
   },
+  // The teaching beat. This replaces two perfectly nice atmosphere shots, and it is worth
+  // the trade: those showed that the game looks good, this shows what the game *is*. Its
+  // captions come from the demonstration schedule, not from here, so the words stay
+  // locked to what the gaze is actually doing.
   {
-    kind: "orbit",
-    seconds: 7,
-    caption: "THE FLOOR OBEYS YOUR GAZE",
-    radius: 8.5,
-    height: 3.4,
-    speed: 0.26,
-    startAngle: 2.1,
-  },
-  {
-    kind: "track",
-    seconds: 7,
-    caption: "LOOK AWAY TO CROSS",
-    radius: 7,
-    height: 2.2,
+    kind: "demo",
+    seconds: DEMONSTRATION_SECONDS,
+    radius: 7.5,
+    height: 2.6,
   },
   {
     kind: "dolly",
@@ -127,6 +124,21 @@ export class ShotDirector {
 
   constructor(private readonly shots: readonly Shot[] = TRAILER_SHOTS) {}
 
+  /**
+   * The shot that is live right now, without advancing time.
+   *
+   * The trailer has to know whether the teaching beat owns the gaze *before* it steps the
+   * simulation, and the camera is only updated afterwards — so the director has to answer
+   * this question out of band.
+   */
+  get currentShot(): Shot | null {
+    return shotAt(this.shots, this.elapsed).shot;
+  }
+
+  get demonstrating(): boolean {
+    return this.currentShot?.kind === "demo";
+  }
+
   get finished(): boolean {
     return this.elapsed >= TRAILER_SECONDS;
   }
@@ -139,24 +151,23 @@ export class ShotDirector {
   }
 
   /** `subject` is whatever the camera should be looking at — normally the player. */
-  update(subject: Vec3, dt: number): ShotFrame {
+  update(subject: Vec3, dt: number, focus: Vec3 | null = null): ShotFrame {
     this.elapsed += dt;
 
-    let remaining = this.elapsed;
-    let index = 0;
-    for (; index < this.shots.length - 1; index++) {
-      const shot = this.shots[index];
-      if (!shot || remaining < shot.seconds) break;
-      remaining -= shot.seconds;
-    }
-
-    const shot = this.shots[index] ?? this.shots[this.shots.length - 1];
+    const { shot, remaining, index } = shotAt(this.shots, this.elapsed);
     if (!shot) {
-      return { position: subject, target: subject, caption: null, title: null, progress: 1 };
+      return {
+        position: subject,
+        target: subject,
+        caption: null,
+        title: null,
+        demonstrate: false,
+        progress: 1,
+      };
     }
 
     const t = Math.min(1, remaining / shot.seconds);
-    const raw = framePosition(shot, subject, remaining, t);
+    const raw = framePosition(shot, subject, remaining, t, focus);
 
     // A cut should be instant; everything within a shot should glide.
     const cut = index !== this.lastShotIndex;
@@ -182,9 +193,25 @@ export class ShotDirector {
       target: this.smoothedTarget,
       caption: shot.caption ?? null,
       title: shot.title ?? null,
+      demonstrate: shot.kind === "demo",
       progress: Math.min(1, this.elapsed / TRAILER_SECONDS),
     };
   }
+}
+
+/** Which shot is live at `elapsed`, and how far into it we are. */
+function shotAt(
+  shots: readonly Shot[],
+  elapsed: number,
+): { shot: Shot | null; remaining: number; index: number } {
+  let remaining = elapsed;
+  let index = 0;
+  for (; index < shots.length - 1; index++) {
+    const shot = shots[index];
+    if (!shot || remaining < shot.seconds) break;
+    remaining -= shot.seconds;
+  }
+  return { shot: shots[index] ?? shots[shots.length - 1] ?? null, remaining, index };
 }
 
 function framePosition(
@@ -192,6 +219,7 @@ function framePosition(
   subject: Vec3,
   elapsedInShot: number,
   t: number,
+  focus: Vec3 | null = null,
 ): { position: Vec3; target: Vec3 } {
   const radius = shot.radius ?? 8;
   const height = shot.height ?? 3;
@@ -242,6 +270,46 @@ function framePosition(
           z: subject.z + Math.sin(0.7) * radius,
         },
         target: { x: subject.x, y: subject.y + 1.1, z: subject.z },
+      };
+    }
+
+    /**
+     * Stand off to the side of the line between the character and the platform it is
+     * staring at, so both are in frame at once.
+     *
+     * Filming this over the character's shoulder would be the obvious choice and it would
+     * ruin the shot: from behind, a head turning away from the platform also turns the
+     * platform out of view, and the viewer never sees the thing they are being told to
+     * watch. From the side, the look travels across the frame and the platform answers it
+     * while staying on screen the whole time.
+     */
+    case "demo": {
+      if (!focus) {
+        return {
+          position: { x: subject.x + radius * 0.7, y: subject.y + height, z: subject.z + radius },
+          target: { x: subject.x, y: subject.y + 0.9, z: subject.z },
+        };
+      }
+
+      const mid = {
+        x: (subject.x + focus.x) / 2,
+        y: (subject.y + focus.y) / 2,
+        z: (subject.z + focus.z) / 2,
+      };
+      const along = normalize({ x: focus.x - subject.x, y: 0, z: focus.z - subject.z });
+      // Perpendicular in the XZ plane.
+      const side = { x: -along.z, y: 0, z: along.x };
+      // A slow creep inwards. Movement keeps the long hold from feeling like a freeze
+      // frame, but it must not be so fast that it competes with the platform.
+      const creep = 1 - t * 0.12;
+
+      return {
+        position: {
+          x: mid.x + side.x * radius * creep,
+          y: mid.y + height,
+          z: mid.z + side.z * radius * creep,
+        },
+        target: { x: mid.x, y: mid.y + 0.35, z: mid.z },
       };
     }
 

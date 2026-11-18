@@ -19,7 +19,8 @@
     "analyze:arena": "node --import tsx scripts/analyze-arena.ts",
     "probe:fallbacks": "node --import tsx scripts/probe-fallbacks.ts",
     "probe:control": "node --import tsx scripts/probe-control.ts",
-    "budget": "node --import tsx scripts/budget.ts"
+    "budget": "node --import tsx scripts/budget.ts",
+    "probe:demo": "node --import tsx scripts/probe-demonstration.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
