@@ -615,6 +615,20 @@ function Briefing({
           <li>
             <kbd>V</kbd> camera · <kbd>R</kbd> restart · <kbd>P</kbd> stats · <kbd>Esc</kbd> pause
           </li>
+          {/*
+            The technique, said out loud.
+
+            Movement is relative to where you are looking, so a player who turns away from
+            ground that unmakes itself also turns their run away from it — and then walks
+            off the course sideways wondering why the rule is unfair. The rule is fine;
+            nothing ever told them to strafe. The verification agent has always solved it
+            exactly this way, which is a good sign the instruction is honest rather than a
+            crutch: it is the same move, just written down.
+          */}
+          <li className="technique">
+            Ground that unmakes itself: look <strong>beside</strong> it, not at it — then
+            strafe across with <kbd>A</kbd>/<kbd>D</kbd>. Turning aims your run away too.
+          </li>
         </ul>
       </div>
     </div>

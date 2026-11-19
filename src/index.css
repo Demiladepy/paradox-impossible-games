@@ -734,3 +734,15 @@ kbd {
   pointer-events: none;
   z-index: 3;
 }
+
+/* The one line of coaching on the briefing card. Set apart from the keybindings above it:
+   it is advice, not a control, and a player who skims the keys should still catch it. */
+.keys .technique {
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(141, 255, 228, 0.18);
+  color: #9fe9d8;
+  line-height: 1.5;
+  max-width: 34ch;
+}
+.keys .technique strong { color: #8dffe4; }
