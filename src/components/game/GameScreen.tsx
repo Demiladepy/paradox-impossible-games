@@ -18,6 +18,7 @@ import { PerfPanel, PerfProbe, type PerfSample } from "./PerfReadout.tsx";
 import { PostFx } from "./PostFx.tsx";
 import type { QualitySettings } from "../../game/settings/quality.ts";
 import { assetUrl } from "../../asset-url.ts";
+import { Capture } from "./Capture.tsx";
 import {
   loadQuality,
   nextLevelDown,
@@ -201,7 +202,9 @@ export function GameScreen() {
         shadows="percentage"
         camera={{ fov: 62, near: 0.1, far: 400 }}
         dpr={[1, settings.dpr]}
-        gl={{ antialias: true }}
+        // preserveDrawingBuffer lets the C key read a full-resolution frame back
+        // out of the canvas; see components/game/Capture.tsx.
+        gl={{ antialias: true, preserveDrawingBuffer: true }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.1;
@@ -222,6 +225,7 @@ export function GameScreen() {
           />
         ) : null}
         <PostFx settings={settings} />
+        <Capture />
       </Canvas>
 
       {phase === "loading" ? <div className="loading">Designing a round…</div> : null}

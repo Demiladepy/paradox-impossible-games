@@ -25,6 +25,7 @@ import type { QualitySettings } from "../../game/settings/quality.ts";
 // The trailer inherits whatever quality the player last chose in game.
 import { loadQuality, QUALITY } from "../../game/settings/quality.ts";
 import { assetUrl } from "../../asset-url.ts";
+import { Capture } from "./Capture.tsx";
 
 /**
  * Trailer mode — the game films itself.
@@ -117,7 +118,9 @@ export function TrailerScreen() {
         shadows="percentage"
         camera={{ fov: 46, near: 0.1, far: 400 }}
         dpr={[1, settings.dpr]}
-        gl={{ antialias: true }}
+        // preserveDrawingBuffer lets the C key read a full-resolution frame back
+        // out of the canvas; see components/game/Capture.tsx.
+        gl={{ antialias: true, preserveDrawingBuffer: true }}
         onCreated={({ gl }) => {
           gl.toneMapping = THREE.ACESFilmicToneMapping;
           gl.toneMappingExposure = 1.15;
@@ -140,6 +143,7 @@ export function TrailerScreen() {
           />
         ) : null}
         <PostFx settings={settings} cinematic />
+        <Capture />
       </Canvas>
 
       {/* Letterbox. Costs nothing and makes a screen capture read as footage. */}
